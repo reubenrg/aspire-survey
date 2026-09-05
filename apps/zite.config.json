@@ -1,0 +1,27 @@
+{
+  "id": "czhk9ytmhm",
+  "accessMode": "external",
+  "seoSettings": {
+    "title": "S2M Health Employees Survey",
+    "description": "",
+    "thumbnailUrl": "https://images.fillout.com/orgid-778278/flowpublicid-czhk9ytmhm/widgetid-default/2bdnnifUhL5q2X3WkKzS5s/Paperplane.png",
+    "faviconUrl": "https://images.fillout.com/orgid-778278/flowpublicid-czhk9ytmhm/widgetid-default/tQE25fU1obb29ZLxM2DwUR/Paperplane.svg"
+  },
+  "pwaSettings": {
+    "enabled": true,
+    "appIconUrl": "https://images.fillout.com/orgid-778278/flowpublicid-czhk9ytmhm/pwa/aa7ae3a32da2cd55/source-9208ce233ac39ad9871e635b7989f381",
+    "icons": {
+      "icon192Url": "https://images.fillout.com/orgid-778278/flowpublicid-czhk9ytmhm/pwa/aa7ae3a32da2cd55/icon-192.png",
+      "icon512Url": "https://images.fillout.com/orgid-778278/flowpublicid-czhk9ytmhm/pwa/aa7ae3a32da2cd55/icon-512.png",
+      "appleTouchIconUrl": "https://images.fillout.com/orgid-778278/flowpublicid-czhk9ytmhm/pwa/aa7ae3a32da2cd55/apple-touch-icon.png",
+      "favicon32Url": "https://images.fillout.com/orgid-778278/flowpublicid-czhk9ytmhm/pwa/aa7ae3a32da2cd55/favicon-32.png"
+    }
+  },
+  "integrations": {
+    "googlesheets-aspire-survey": {
+      "type": "googlesheets",
+      "connectionId": "svc_500363",
+      "spreadsheet": "19M_aXHcWYhrEYunne_RKR5U8RuYLbHba9IYqi5rxLBA"
+    }
+  }
+}

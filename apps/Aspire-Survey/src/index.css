@@ -1,0 +1,123 @@
+@import url('https://fonts.googleapis.com/css2?family=Capriola&family=Averia+Serif+Libre:ital,wght@0,300;0,400;0,700;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Auto-restored theme variables */
+    --font-mono: 'Courier New', monospace;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+    --shadow-x: 0px;
+    --shadow-y: 1px;
+    --shadow-blur: 4px;
+    --shadow-spread: 0px;
+    --shadow-opacity: 0.2;
+    --shadow-color: #000000;
+    --shadow-2xs: var(--shadow-x) var(--shadow-y) color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
+    --shadow-xs: var(--shadow-x) var(--shadow-y) var(--shadow-blur) var(--shadow-spread) color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
+    --shadow-lg: calc(var(--shadow-x) * 4) calc(var(--shadow-y) * 4) calc(var(--shadow-blur) * 5) calc(var(--shadow-spread) - 3px) color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
+    --shadow-xl: calc(var(--shadow-x) * 6) calc(var(--shadow-y) * 6) calc(var(--shadow-blur) * 7) calc(var(--shadow-spread) - 5px) color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
+    --shadow-2xl: calc(var(--shadow-x) * 8) calc(var(--shadow-y) * 8) calc(max(0px, var(--shadow-blur) * 9 - 8px)) calc(var(--shadow-spread) - 12px) color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 250%), transparent);
+
+    --font-sans: 'Averia Serif Libre', Georgia, serif;
+    --font-display: 'Capriola', system-ui, sans-serif;
+
+    /* Aspire Blue #2961B6 → hsl(216 60% 44%) */
+    --primary: 216 60% 44%;
+    --primary-foreground: 0 0% 100%;
+
+    /* White surfaces */
+    --background: 0 0% 100%;
+    --foreground: 210 10% 23%; /* Outer Space #31383F */
+
+    --card: 0 0% 100%;
+    --card-foreground: 210 10% 23%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 10% 23%;
+
+    /* Sazerac #F6E1CE → hsl(27 72% 89%) */
+    --secondary: 27 72% 89%;
+    --secondary-foreground: 210 10% 23%;
+
+    /* Muted — light Sazerac tint */
+    --muted: 27 50% 94%;
+    --muted-foreground: 210 8% 46%;
+
+    /* Accent — light Aspire Blue tint */
+    --accent: 216 50% 94%;
+    --accent-foreground: 216 60% 35%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Outer Space border */
+    --border: 210 10% 87%;
+    --input: 210 10% 87%;
+    --ring: 216 60% 44%;
+
+    --radius: 0.5rem;
+
+    /* Charts — Aspire Blue + skin tones */
+    --chart-1: 216 60% 44%;   /* Aspire Blue */
+    --chart-2: 24 90% 20%;    /* Raw Umber */
+    --chart-3: 24 64% 42%;    /* Desert */
+    --chart-4: 24 60% 65%;    /* Di Serria */
+    --chart-5: 27 72% 89%;    /* Sazerac */
+
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  }
+
+  .dark {
+    --primary: 216 60% 55%;
+    --primary-foreground: 0 0% 100%;
+    --background: 210 10% 12%;
+    --foreground: 27 50% 92%;
+    --card: 210 10% 14%;
+    --card-foreground: 27 50% 92%;
+    --popover: 210 10% 14%;
+    --popover-foreground: 27 50% 92%;
+    --secondary: 210 10% 20%;
+    --secondary-foreground: 27 50% 92%;
+    --muted: 210 10% 18%;
+    --muted-foreground: 210 8% 58%;
+    --accent: 216 40% 20%;
+    --accent-foreground: 216 60% 70%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 10% 24%;
+    --input: 210 10% 24%;
+    --ring: 216 60% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+/* Utility class for display font (Capriola) */
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* Hide Made with Zite watermark */
+#zite-watermark,
+[data-zite-watermark],
+a[href*="zite.so"][target="_blank"]:has(svg) {
+  display: none !important;
+}

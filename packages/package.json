@@ -1,0 +1,11 @@
+{
+  "name": "employee-survey",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "dependencies": {
+    "zitejs": "0.9.115"
+  }
+}

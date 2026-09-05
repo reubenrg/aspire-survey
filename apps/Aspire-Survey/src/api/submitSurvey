@@ -1,0 +1,215 @@
+import { z } from 'zod';
+import { createEndpoint, ZiteError } from 'zitejs/backend';
+import { zite } from 'zitejs/db';
+import { google } from 'googleapis';
+
+const SPREADSHEET_ID = '19M_aXHcWYhrEYunne_RKR5U8RuYLbHba9IYqi5rxLBA';
+const SHEET_NAME = 'Responses';
+
+// Change matrix rows (Section 2)
+const CHANGE_ROWS = [
+  'Understanding what is expected from my role',
+  'Planning and prioritising my work',
+  'Completing my responsibilities reliably',
+  'Taking ownership until work is completed',
+  'Solving problems when they arise',
+  'Making appropriate decisions independently',
+  'Learning from mistakes, feedback or difficult situations',
+  'Applying previous learning to new situations',
+  'Adapting when requirements or priorities change',
+  'Communicating clearly with the people I work with',
+  'Preventing repeated problems',
+  'Being consistent in how I work',
+];
+
+// Manager matrix rows (Section 4)
+const MANAGER_ROWS = [
+  'My manager makes it clear what good performance looks like in my role',
+  'My manager gives feedback that helps me improve',
+  'My manager helps me understand what I should do differently',
+  'My manager follows up after important feedback',
+  'My manager encourages me to take ownership',
+  'My manager gives me appropriate freedom to solve problems',
+  'My manager encourages learning from mistakes or challenges',
+  'My manager connects Aspire Program behaviours with actual work where relevant',
+];
+
+// Aspire behaviour matrix rows (Section 5)
+const ASPIRE_BEHAVIOUR_ROWS = [
+  'Aspire Program makes me pause and think about how I perform my work',
+  'Aspire Program helps me reflect on real situations from my work',
+  'Aspire Program helps me identify something I could do differently',
+  'Aspire Program helps me apply learning in my normal work',
+  'Aspire Program has helped me become more consistent in at least one useful behaviour',
+  'Aspire Program has helped me handle some situations better than before',
+  'Aspire Program habits are relevant to the responsibilities of my role',
+];
+
+// Header row
+const HEADERS = [
+  'Timestamp', 'Employee ID', 'Employee Name', 'Aspire Team / Role', 'Location',
+  // Section 2 — Change matrix (12 cols)
+  ...CHANGE_ROWS.map((r) => `S2: ${r}`),
+  // Section 3 — Problems
+  'S3: Mistake response', 'S3: Work level',
+  // Section 4 — Manager matrix (8 cols) + frequency
+  ...MANAGER_ROWS.map((r) => `S4: ${r}`),
+  'S4: Manager frequency',
+  // Section 5 — Aspire behaviour matrix (7 cols)
+  ...ASPIRE_BEHAVIOUR_ROWS.map((r) => `S5: ${r}`),
+  // Section 6
+  'S6: Habit level',
+  // Section 7
+  'S7: Improvement factors',
+  // Section 8
+  'S8: Impact areas',
+  // Section 9 — Evidence
+  'S9: One thing differently', 'S9: Real example', 'S9: Contributed most', 'S9: Aspire contribution', 'S9: Aspire detail',
+  // Section 10
+  'S10: Barrier', 'S10: Help option',
+  // Section 11
+  'S11: Performance clarity',
+  // Section 12
+  'S12: Role-specific role', 'S12: Role Q1', 'S12: Role Q2', 'S12: Role Q3',
+  // Section 13
+  'S13: Final answer',
+];
+
+function extractScale(val: string | undefined): string {
+  if (!val) return '';
+  const m = val.match(/^(\d)/);
+  return m ? m[1] : val;
+}
+
+function getSheets() {
+  const auth = new google.auth.OAuth2();
+  auth.setCredentials({ access_token: process.env.ZITE_GOOGLESHEETS_ACCESS_TOKEN });
+  return google.sheets({ version: 'v4', auth });
+}
+
+async function ensureHeaders(sheets: ReturnType<typeof google.sheets>) {
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SHEET_NAME}!A1:A1`,
+    });
+    if (res.data.values && res.data.values.length > 0) return; // headers exist
+  } catch {
+    // Sheet might not exist — create it
+    try {
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: SPREADSHEET_ID,
+        requestBody: { requests: [{ addSheet: { properties: { title: SHEET_NAME } } }] },
+      });
+    } catch { /* sheet already exists */ }
+  }
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SHEET_NAME}!A1`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [HEADERS] },
+  });
+}
+
+export default createEndpoint({
+  description: 'Submits a completed Aspire survey response',
+  inputSchema: z.object({
+    employeeId: z.string().min(1),
+    employeeName: z.string().min(1),
+    aspireTeamRole: z.string().min(1),
+    location: z.string().min(1),
+    responsesJson: z.string(),
+    aspireUsefulnessScore: z.number(),
+    habitLevel: z.string().optional(),
+  }),
+  outputSchema: z.object({ success: z.boolean(), id: z.string() }),
+  execute: async ({ input }) => {
+    const existing = await zite.surveyResponses.findOne({
+      filters: { employeeId: input.employeeId },
+    });
+    if (existing) {
+      throw new ZiteError({
+        code: 'BAD_REQUEST',
+        message: 'A response has already been submitted for this Employee ID.',
+        userFacingMessage: 'A response has already been submitted for this Employee ID. Each employee may submit only once.',
+      });
+    }
+
+    const record = await zite.surveyResponses.create({
+      record: {
+        employeeId: input.employeeId,
+        employeeName: input.employeeName,
+        aspireTeamRole: input.aspireTeamRole,
+        location: input.location,
+        reportingManager: null,
+        tenure: null,
+        responsesJson: input.responsesJson,
+        aspireUsefulnessScore: input.aspireUsefulnessScore,
+        habitLevel: input.habitLevel || null,
+      },
+    });
+
+    // Write to Google Sheets
+    try {
+      const r = JSON.parse(input.responsesJson);
+      const roleAnswers = Object.entries(r.roleSpecific?.answers || {});
+      const roleStatements = roleAnswers.map(([, v]) => extractScale(v as string));
+
+      const row = [
+        new Date().toISOString(),
+        input.employeeId,
+        input.employeeName,
+        input.aspireTeamRole,
+        input.location,
+        // Section 2 — change matrix
+        ...CHANGE_ROWS.map((k) => extractScale(r.change?.[k])),
+        // Section 3
+        r.mistakeResponse || '',
+        r.workLevel || '',
+        // Section 4 — manager matrix + frequency
+        ...MANAGER_ROWS.map((k) => extractScale(r.manager?.[k])),
+        r.managerFrequency || '',
+        // Section 5 — aspire behaviour matrix
+        ...ASPIRE_BEHAVIOUR_ROWS.map((k) => extractScale(r.aspireBehaviour?.[k])),
+        // Section 6
+        r.habitLevel || '',
+        // Section 7
+        (r.factors || []).join('; '),
+        // Section 8
+        (r.impacts || []).join('; '),
+        // Section 9
+        r.evidence?.oneThing || '',
+        r.evidence?.example || '',
+        r.evidence?.contributedMost || '',
+        r.evidence?.aspireContribution || '',
+        r.evidence?.aspireDetail || '',
+        // Section 10
+        r.barrier || '',
+        r.helpOption || '',
+        // Section 11
+        r.pmsClarity || '',
+        // Section 12
+        r.roleSpecific?.role || '',
+        roleStatements[0] || '',
+        roleStatements[1] || '',
+        roleStatements[2] || '',
+        // Section 13
+        r.finalAnswer || '',
+      ];
+
+      const sheets = getSheets();
+      await ensureHeaders(sheets);
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${SHEET_NAME}!A:A`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [row] },
+      });
+    } catch (e) {
+      console.error('Google Sheets write failed:', e);
+      // Don't fail the submission — data is safe in the database
+    }
+
+    return { success: true, id: record.id };
+  },
+});

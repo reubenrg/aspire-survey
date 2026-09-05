@@ -1,0 +1,13 @@
+{
+  "project": {
+    "name": "Employee Survey",
+    "basePublicIdentifier": "63064b46eb596e5a"
+  },
+  "integrations": {
+    "aspire-survey-s2-m-health": {
+      "type": "googlesheets",
+      "connectionId": "svc_533082",
+      "spreadsheet": "19M_aXHcWYhrEYunne_RKR5U8RuYLbHba9IYqi5rxLBA"
+    }
+  }
+}

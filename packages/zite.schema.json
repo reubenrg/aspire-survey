@@ -1,0 +1,261 @@
+{
+  "tables": [
+    {
+      "id": "t3hMt8QjV1t",
+      "sdkName": "surveyResponses",
+      "name": "Survey Responses",
+      "primaryFieldId": "fkLqLLQbiqw",
+      "fields": [
+        {
+          "id": "fkLqLLQbiqw",
+          "sdkName": "employeeId",
+          "definition": {
+            "name": "Employee ID",
+            "type": "single_line_text",
+            "template": {}
+          }
+        },
+        {
+          "id": "ft38HcfDEHv",
+          "sdkName": "employeeName",
+          "definition": {
+            "name": "Employee Name",
+            "type": "single_line_text",
+            "template": {}
+          }
+        },
+        {
+          "id": "ftJV9o54xpG",
+          "sdkName": "aspireTeamRole",
+          "definition": {
+            "name": "Aspire Team Role",
+            "type": "single_select",
+            "template": {
+              "options": [
+                {
+                  "value": "vpTY",
+                  "label": "SME / Process Coach",
+                  "color": "purple"
+                },
+                {
+                  "value": "15w6",
+                  "label": "HCC Coders",
+                  "color": "orange"
+                },
+                {
+                  "value": "nkvR",
+                  "label": "HR",
+                  "color": "blue"
+                },
+                {
+                  "value": "eBk5",
+                  "label": "Team Leads",
+                  "color": "gray"
+                },
+                {
+                  "value": "mjyf",
+                  "label": "Admin",
+                  "color": "red"
+                },
+                {
+                  "value": "fap5",
+                  "label": "Quality Analyst",
+                  "color": "yellow"
+                },
+                {
+                  "value": "7TVy",
+                  "label": "Trainer",
+                  "color": "green"
+                },
+                {
+                  "value": "4DdQ",
+                  "label": "IT Manager",
+                  "color": "pink"
+                },
+                {
+                  "value": "qDso",
+                  "label": "IT",
+                  "color": "lime"
+                },
+                {
+                  "value": "avng",
+                  "label": "MIS",
+                  "color": "tangerine"
+                },
+                {
+                  "value": "nrNz",
+                  "label": "Team Manager",
+                  "color": "emerald"
+                }
+              ],
+              "disableColors": false
+            }
+          }
+        },
+        {
+          "id": "ffVBiBuryXT",
+          "sdkName": "location",
+          "definition": {
+            "name": "Location",
+            "type": "single_select",
+            "template": {
+              "options": [
+                {
+                  "value": "fwgv",
+                  "label": "Chennai – MINT",
+                  "color": "purple"
+                },
+                {
+                  "value": "7FZ7",
+                  "label": "Chennai – Ambattur",
+                  "color": "orange"
+                },
+                {
+                  "value": "5m6o",
+                  "label": "Chennai – Prakash Tower",
+                  "color": "blue"
+                },
+                {
+                  "value": "qydb",
+                  "label": "Coimbatore",
+                  "color": "gray"
+                },
+                {
+                  "value": "u3Rr",
+                  "label": "Other",
+                  "color": "red"
+                }
+              ],
+              "disableColors": false
+            }
+          }
+        },
+        {
+          "id": "fivHM9b5rHm",
+          "sdkName": "reportingManager",
+          "definition": {
+            "name": "Reporting Manager",
+            "type": "single_line_text",
+            "template": {}
+          }
+        },
+        {
+          "id": "f1Kw2ZAEq8P",
+          "sdkName": "tenure",
+          "definition": {
+            "name": "Tenure",
+            "type": "single_select",
+            "template": {
+              "options": [
+                {
+                  "value": "fTpX",
+                  "label": "Less than 3 months",
+                  "color": "purple"
+                },
+                {
+                  "value": "hcYZ",
+                  "label": "3–6 months",
+                  "color": "orange"
+                },
+                {
+                  "value": "aCg2",
+                  "label": "6–12 months",
+                  "color": "blue"
+                },
+                {
+                  "value": "5ryz",
+                  "label": "1–2 years",
+                  "color": "gray"
+                },
+                {
+                  "value": "f9ef",
+                  "label": "More than 2 years",
+                  "color": "red"
+                }
+              ],
+              "disableColors": false
+            }
+          }
+        },
+        {
+          "id": "fe8VgQABpyy",
+          "sdkName": "responsesJson",
+          "definition": {
+            "name": "Responses JSON",
+            "type": "long_text",
+            "template": {}
+          }
+        },
+        {
+          "id": "ffmtToWkmhZ",
+          "sdkName": "aspireUsefulnessScore",
+          "definition": {
+            "name": "Aspire Usefulness Score",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "fai9SQWYADs",
+          "sdkName": "habitLevel",
+          "definition": {
+            "name": "Habit Level",
+            "type": "single_select",
+            "template": {
+              "options": [
+                {
+                  "value": "kfYf",
+                  "label": "Only when reminded",
+                  "color": "purple"
+                },
+                {
+                  "value": "jmo7",
+                  "label": "Remember but inconsistent",
+                  "color": "orange"
+                },
+                {
+                  "value": "1wbQ",
+                  "label": "Consciously practice sometimes",
+                  "color": "blue"
+                },
+                {
+                  "value": "h4LG",
+                  "label": "Regularly apply",
+                  "color": "gray"
+                },
+                {
+                  "value": "6agf",
+                  "label": "Naturally part of work",
+                  "color": "red"
+                },
+                {
+                  "value": "5fok",
+                  "label": "Help others practice",
+                  "color": "yellow"
+                }
+              ],
+              "disableColors": false
+            }
+          }
+        },
+        {
+          "id": "fcQaoqJc86P",
+          "sdkName": "submittedAt",
+          "definition": {
+            "name": "Submitted At",
+            "type": "created_at",
+            "template": {
+              "timezone": "",
+              "dateFormat": "local",
+              "timeFormat": "12h",
+              "displayTimeZone": false
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

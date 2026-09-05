@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "integrations": {
+    "aspire-survey-s2-m-health": {
+      "idMappings": {
+        "spreadsheet": "19M_aXHcWYhrEYunne_RKR5U8RuYLbHba9IYqi5rxLBA",
+        "tables": {},
+        "fields": {}
+      }
+    }
+  }
+}
