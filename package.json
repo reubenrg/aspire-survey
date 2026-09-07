@@ -1,0 +1,7 @@
+{
+  "name": "aspire-survey-deployment",
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix apps install --legacy-peer-deps --no-audit --no-fund && npm --prefix apps run build"
+  }
+}
