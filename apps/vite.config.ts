@@ -49,8 +49,6 @@ export default defineConfig({
       'zitejs/api': path.resolve(__dirname, './Aspire-Survey/src/zite-api.ts'),
       'zitejs/backend': path.resolve(__dirname, './Aspire-Survey/.Zite/backend'),
       'zitejs/caller': path.resolve(__dirname, './node_modules/zitejs/dist/esm/caller/index.js'),
-      'zitejs/integrations': path.resolve(__dirname, './Aspire-Survey/.Zite/integrations/airtable.ts'),
-      'zitejs/email': path.resolve(__dirname, './Aspire-Survey/.Zite/integrations/email.ts'),
       '@project/components': path.resolve(__dirname, '../packages/components'),
       '@project/components/ui/sonner': path.resolve(__dirname, '../packages/sonner.tsx'),
       clsx: path.resolve(__dirname, './node_modules/clsx'),
