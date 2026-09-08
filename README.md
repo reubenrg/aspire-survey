@@ -20,6 +20,7 @@ Add these variables to the Vercel project for **Production**, **Preview**, and *
 | `VITE_SUPABASE_ANON_KEY` | The Supabase publishable/anonymous key (never use the service-role key in a browser app) |
 
 The required names are also listed in [`apps/.env.example`](apps/.env.example).
+After saving or changing them, redeploy from **Deployments**. The production build validates both values and stops with a clear error instead of publishing a survey that cannot save responses.
 
 ### 3. Deploy
 
