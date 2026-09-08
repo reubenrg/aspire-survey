@@ -1,6 +1,6 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "public",
+  "outputDirectory": "apps/Aspire-Survey/dist",
   "installCommand": "npm install --no-audit --no-fund",
   "framework": "vite"
 }
