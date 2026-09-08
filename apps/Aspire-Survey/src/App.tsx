@@ -20,12 +20,13 @@ import RoleStep from './components/Steps/RoleStep';
 import FinalQuestionStep from './components/Steps/FinalQuestionStep';
 import ThankYouPage from './components/Steps/ThankYouPage';
 import { HABIT_LEVELS } from './data/SurveyData';
+import { SURVEY_CONFIG } from './survey.config';
 
 // 0=welcome, 1–13=sections, 14=thankYou
-const TOTAL = 13;
+const TOTAL = SURVEY_CONFIG.sections.length;
 const STEP_LABELS = [
   '',
-  ...Array.from({ length: TOTAL }, (_, i) => `Section ${i + 1} of ${TOTAL}`),
+  ...SURVEY_CONFIG.sections.map((_, i) => `Section ${i + 1} of ${TOTAL}`),
   '',
 ];
 

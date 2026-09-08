@@ -51,6 +51,10 @@ npm run build
 
 The generated site is written to `apps/Aspire-Survey/dist`.
 
+## Create future surveys
+
+Campaign identity and section metadata live in `apps/Aspire-Survey/src/survey.config.ts`, while question text and answer choices live in `apps/Aspire-Survey/src/data/SurveyData.ts`. See [CUSTOMIZING.md](CUSTOMIZING.md) for the complete customization and verification checklist. The original responsive components and Aspire theme remain unchanged.
+
 ## Data-access note
 
 The Supabase anonymous key is intentionally public and is safe to include in the generated frontend. Access is controlled by database grants and row-level security: the included SQL grants anonymous users `INSERT` only, not `SELECT`, `UPDATE`, or `DELETE`. The submission request deliberately uses PostgREST's minimal response mode so saving a response does not require public read access. Keep all privileged keys out of Vercel variables whose names start with `VITE_`.

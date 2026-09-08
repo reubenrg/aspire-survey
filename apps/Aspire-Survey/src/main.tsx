@@ -5,8 +5,11 @@ import App from "./App";
 import { ErrorBoundary } from 'react-error-boundary';
 import { HammerIcon } from 'lucide-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SURVEY_CONFIG } from './survey.config';
 
 const queryClient = new QueryClient();
+
+document.title = SURVEY_CONFIG.documentTitle;
 
 function reloadApp() {
   if (window._ziteOnReload) {
