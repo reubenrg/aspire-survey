@@ -41,7 +41,7 @@ cp apps/.env.example apps/.env.local
 npm run dev
 ```
 
-The development server is available at <http://localhost:8080>.
+The development server reads `apps/.env.local` and is available at <http://localhost:8080>. Restart it after adding or changing environment variables.
 
 Create a production build with:
 
