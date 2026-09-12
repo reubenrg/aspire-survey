@@ -1,4 +1,5 @@
 import LanguageToggle from './LanguageToggle';
+import { SURVEY_BRAND_NAME } from '../survey.config';
 
 interface Props {
   currentSection: number;
@@ -12,7 +13,7 @@ export default function SurveyHeader({ currentSection, totalSections, sectionLab
   return (
     <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
       <div className="max-w-3xl mx-auto px-6 py-3 flex items-center justify-between gap-3">
-        <span className="text-sm font-display text-foreground whitespace-nowrap">S2M Health × Aspire</span>
+        <span className="text-sm font-display text-foreground whitespace-nowrap">{SURVEY_BRAND_NAME}</span>
         <div className="flex items-center gap-3">
           <LanguageToggle />
           <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:inline">{sectionLabel}</span>

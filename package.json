@@ -2,6 +2,11 @@
   "name": "aspire-survey-deployment",
   "private": true,
   "scripts": {
-    "build": "npm --prefix apps install --legacy-peer-deps --no-audit --no-fund && npm --prefix apps run build"
+    "build": "npm --prefix apps run build",
+    "dev": "npm --prefix apps run dev",
+    "deploy": "npx vercel@latest --prod"
+  },
+  "engines": {
+    "node": ">=20.19"
   }
 }

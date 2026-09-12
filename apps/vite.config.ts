@@ -17,6 +17,10 @@ const deps = new Set([
 
 export default defineConfig({
   root: path.resolve(__dirname, './Aspire-Survey'),
+  // Keep local environment files beside apps/.env.example. Vite otherwise
+  // searches the nested application root (apps/Aspire-Survey), which makes an
+  // apps/.env.local file appear to be configured while silently ignoring it.
+  envDir: __dirname,
   define: { 'import.meta.env.VITE_ZITE_FLOW_ID': JSON.stringify(flowConfig.id ?? '') },
   build: { target: 'esnext', sourcemap: false, reportCompressedSize: false },
   server: {

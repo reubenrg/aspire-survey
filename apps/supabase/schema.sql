@@ -55,9 +55,15 @@ comment on column public.survey_responses.s2_change_12 is 'Being consistent in h
 
 alter table public.survey_responses enable row level security;
 
+-- Keep survey answers private. The browser only needs permission to create a
+-- response; reporting access should be performed by database owners or a
+-- trusted backend using a service-role credential.
+revoke all on table public.survey_responses from anon, authenticated;
+grant insert on table public.survey_responses to anon, authenticated;
+
 drop policy if exists "Allow public survey submissions" on public.survey_responses;
 create policy "Allow public survey submissions"
   on public.survey_responses
   for insert
-  to anon
+  to anon, authenticated
   with check (true);
