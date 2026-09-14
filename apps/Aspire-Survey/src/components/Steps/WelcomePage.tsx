@@ -37,7 +37,7 @@ export default function WelcomePage({ onStart }: Props) {
             <li>{t('What support would help you perform your role better?', lang)}</li>
           </ul>
           <p>
-            {t('The survey is focused on your actual work experience. There are no right or wrong answers, and honest responses will help S2M Health and the Aspire Program identify what is working well, where stronger support is needed, and how the program can be improved further.', lang)}
+            {t('The survey is focused on your actual work experience. There are no right or wrong answers, and honest responses will help S2M Health and the Aspire Team identify what is working well, where stronger support is needed, and how the program can be improved further.', lang)}
           </p>
         </div>
         <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mb-8">

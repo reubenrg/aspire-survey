@@ -33,7 +33,7 @@ export default function ChangeStep({ matrixAnswers, onMatrixChange, onNext, onBa
   return (
     <div className="max-w-3xl mx-auto px-6 py-8">
       <h2 className="text-xl font-display text-foreground mb-1">{t('How Has the Way You Work Changed?', lang)}</h2>
-      <p className="text-sm text-muted-foreground mb-6">{t('Compared with April 2026, how has your ability changed in the following areas?', lang)}</p>
+      <p className="text-sm text-muted-foreground mb-6">{t('Compared with six months ago, how has your ability changed in the following areas?', lang)}</p>
       <LikertMatrix statements={statements} scaleLabels={CHANGE_SCALE} answers={matrixById} onChange={(id, val) => { onMatrixChange(CHANGE_ROWS[id], val); setErrors((p) => { const n = new Set(p); n.delete(CHANGE_ROWS[id]); return n; }); }} errors={errorIds} lang={lang} />
       <NavigationButtons onBack={onBack} onNext={validate} lang={lang} />
     </div>

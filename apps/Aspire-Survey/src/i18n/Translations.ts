@@ -23,8 +23,8 @@ const ta: TranslationMap = {
   'How much the Aspire Program has contributed to those changes?': 'அந்த மாற்றங்களுக்கு Aspire எவ்வளவு பங்களித்தது?',
   'What is helping or limiting consistent behaviour? and': 'நிலையான நடத்தைக்கு எது உதவுகிறது அல்லது தடுக்கிறது? மற்றும்',
   'What support would help you perform your role better?': 'உங்கள் பணியை சிறப்பாகச் செய்ய என்ன ஆதரவு உதவும்?',
-  'The survey is focused on your actual work experience. There are no right or wrong answers, and honest responses will help S2M Health and the Aspire Program identify what is working well, where stronger support is needed, and how the program can be improved further.':
-    'இந்த ஆய்வு உங்கள் உண்மையான பணி அனுபவத்தை மையமாகக் கொண்டது. சரியான அல்லது தவறான பதில்கள் இல்லை, நேர்மையான பதில்கள் S2M Health மற்றும் Aspire-க்கு எது நன்றாக வேலை செய்கிறது, எங்கு வலுவான ஆதரவு தேவை மற்றும் திட்டத்தை எவ்வாறு மேலும் மேம்படுத்தலாம் என்பதை அடையாளம் காண உதவும்.',
+  'The survey is focused on your actual work experience. There are no right or wrong answers, and honest responses will help S2M Health and the Aspire Team identify what is working well, where stronger support is needed, and how the program can be improved further.':
+    'இந்த ஆய்வு உங்கள் உண்மையான பணி அனுபவத்தை மையமாகக் கொண்டது. சரியான அல்லது தவறான பதில்கள் இல்லை, நேர்மையான பதில்கள் S2M Health மற்றும் Aspire குழுவிற்கு எது நன்றாக வேலை செய்கிறது, எங்கு வலுவான ஆதரவு தேவை மற்றும் திட்டத்தை எவ்வாறு மேலும் மேம்படுத்தலாம் என்பதை அடையாளம் காண உதவும்.',
   'Estimated time: 8–10 minutes': 'மதிப்பிடப்பட்ட நேரம்: 8–10 நிமிடங்கள்',
   'Begin Survey': 'ஆய்வைத் தொடங்குங்கள்',
 
@@ -47,7 +47,7 @@ const ta: TranslationMap = {
 
   // — Section 2: Change —
   'How Has the Way You Work Changed?': 'உங்கள் பணி முறை எவ்வாறு மாறியுள்ளது?',
-  'Compared with April 2026, how has your ability changed in the following areas?': 'ஏப்ரல் 2026 உடன் ஒப்பிடுகையில், பின்வரும் பகுதிகளில் உங்கள் திறன் எவ்வாறு மாறியுள்ளது?',
+  'Compared with six months ago, how has your ability changed in the following areas?': 'ஆறு மாதங்களுக்கு முந்தைய நிலையுடன் ஒப்பிடுகையில், பின்வரும் பகுதிகளில் உங்கள் திறன் எவ்வாறு மாறியுள்ளது?',
   'Understanding what is expected from my role': 'என் பங்கிலிருந்து என்ன எதிர்பார்க்கப்படுகிறது என்பதைப் புரிந்துகொள்வது',
   'Planning and prioritising my work': 'என் பணியைத் திட்டமிடுவது மற்றும் முன்னுரிமை அளிப்பது',
   'Completing my responsibilities reliably': 'என் பொறுப்புகளை நம்பகமாக நிறைவு செய்வது',
@@ -313,8 +313,8 @@ const hi: TranslationMap = {
   'How much the Aspire Program has contributed to those changes?': 'उन बदलावों में Aspire ने कितना योगदान दिया?',
   'What is helping or limiting consistent behaviour? and': 'निरंतर व्यवहार में क्या मदद कर रहा है या बाधा डाल रहा है? और',
   'What support would help you perform your role better?': 'आपकी भूमिका को बेहतर ढंग से निभाने में कौन सा सहयोग मदद करेगा?',
-  'The survey is focused on your actual work experience. There are no right or wrong answers, and honest responses will help S2M Health and the Aspire Program identify what is working well, where stronger support is needed, and how the program can be improved further.':
-    'यह सर्वेक्षण आपके वास्तविक कार्य अनुभव पर केंद्रित है। कोई सही या गलत उत्तर नहीं है, और ईमानदार प्रतिक्रियाएं S2M Health और Aspire को यह पहचानने में मदद करेंगी कि क्या अच्छा काम कर रहा है, कहां मजबूत सहयोग की आवश्यकता है, और कार्यक्रम को और कैसे बेहतर बनाया जा सकता है।',
+  'The survey is focused on your actual work experience. There are no right or wrong answers, and honest responses will help S2M Health and the Aspire Team identify what is working well, where stronger support is needed, and how the program can be improved further.':
+    'यह सर्वेक्षण आपके वास्तविक कार्य अनुभव पर केंद्रित है। कोई सही या गलत उत्तर नहीं है, और ईमानदार प्रतिक्रियाएं S2M Health और Aspire टीम को यह पहचानने में मदद करेंगी कि क्या अच्छा काम कर रहा है, कहां मजबूत सहयोग की आवश्यकता है, और कार्यक्रम को और कैसे बेहतर बनाया जा सकता है।',
   'Estimated time: 8–10 minutes': 'अनुमानित समय: 8–10 मिनट',
   'Begin Survey': 'सर्वेक्षण शुरू करें',
 
@@ -337,7 +337,7 @@ const hi: TranslationMap = {
 
   // — Section 2: Change —
   'How Has the Way You Work Changed?': 'आपके काम करने का तरीका कैसे बदला है?',
-  'Compared with April 2026, how has your ability changed in the following areas?': 'अप्रैल 2026 की तुलना में, निम्नलिखित क्षेत्रों में आपकी क्षमता कैसे बदली है?',
+  'Compared with six months ago, how has your ability changed in the following areas?': 'छह महीने पहले की तुलना में, निम्नलिखित क्षेत्रों में आपकी क्षमता कैसे बदली है?',
   'Understanding what is expected from my role': 'मेरी भूमिका से क्या अपेक्षित है यह समझना',
   'Planning and prioritising my work': 'अपने काम की योजना बनाना और प्राथमिकता देना',
   'Completing my responsibilities reliably': 'अपनी जिम्मेदारियों को विश्वसनीय रूप से पूरा करना',
