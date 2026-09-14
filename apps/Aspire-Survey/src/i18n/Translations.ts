@@ -132,7 +132,7 @@ const ta: TranslationMap = {
 
   // — Section 7: Helped Improve —
   'What Has Helped You Improve?': 'மேம்பட உங்களுக்கு எது உதவியது?',
-  'Which factors have contributed most to any improvement in how you work since April? (Select up to 3)': 'ஏப்ரல் முதல் நீங்கள் பணிபுரியும் விதத்தில் ஏதேனும் முன்னேற்றத்திற்கு எந்த காரணிகள் அதிகம் பங்களித்தன? (3 வரை தேர்ந்தெடுக்கவும்)',
+  'Which factors have contributed most to any improvement in how you work in the last six months? (Select up to 3)': 'கடந்த ஆறு மாதங்களில் நீங்கள் பணிபுரியும் விதத்தில் ஏதேனும் முன்னேற்றத்திற்கு எந்த காரணிகள் அதிகம் பங்களித்தன? (3 வரை தேர்ந்தெடுக்கவும்)',
   'Aspire Program habit formation': 'Aspire பழக்க உருவாக்கம்',
   'Support from my manager': 'என் மேலாளரின் ஆதரவு',
   'Support from my Team Lead': 'என் குழுத் தலைவரின் ஆதரவு',
@@ -415,7 +415,7 @@ const hi: TranslationMap = {
 
   // — Section 7: Helped Improve —
   'What Has Helped You Improve?': 'सुधार करने में आपकी किसने मदद की?',
-  'Which factors have contributed most to any improvement in how you work since April? (Select up to 3)': 'अप्रैल से आपके काम करने के तरीके में किसी भी सुधार में किन कारकों ने सबसे अधिक योगदान दिया? (3 तक चुनें)',
+  'Which factors have contributed most to any improvement in how you work in the last six months? (Select up to 3)': 'पिछले छह महीनों में आपके काम करने के तरीके में किसी भी सुधार में किन कारकों ने सबसे अधिक योगदान दिया? (3 तक चुनें)',
   'Aspire Program habit formation': 'Aspire आदत निर्माण',
   'Support from my manager': 'मेरे प्रबंधक का सहयोग',
   'Support from my Team Lead': 'मेरे टीम लीड का सहयोग',

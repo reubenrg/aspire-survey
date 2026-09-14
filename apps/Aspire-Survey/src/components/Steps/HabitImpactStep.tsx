@@ -47,7 +47,7 @@ export default function HabitImpactStep({
       <h2 className="text-xl font-display text-foreground mb-6">{t('Habits, Support and Impact', lang)}</h2>
       <div className="space-y-8">
         <RadioSelect label="Which statement best describes the behaviour you are currently practising through the Aspire Program?" options={HABIT_LEVELS} value={habitLevel} onChange={(v) => { onHabitChange(v); clear('habit'); }} required error={errors.has('habit')} lang={lang} />
-        <CheckboxSelect label="Which factors have contributed most to any improvement in how you work since April? (Select up to 3)" options={IMPROVEMENT_FACTORS} selected={factors} onChange={(v) => { onFactorsChange(v); clear('factors'); }} otherText={factorsOther} onOtherTextChange={onFactorsOtherChange} maxSelections={3} required error={errors.has('factors')} lang={lang} />
+        <CheckboxSelect label="Which factors have contributed most to any improvement in how you work in the last six months? (Select up to 3)" options={IMPROVEMENT_FACTORS} selected={factors} onChange={(v) => { onFactorsChange(v); clear('factors'); }} otherText={factorsOther} onOtherTextChange={onFactorsOtherChange} maxSelections={3} required error={errors.has('factors')} lang={lang} />
         <CheckboxSelect label="Where have you noticed the most improvement in your work? (Select up to 3)" options={IMPACT_AREAS} selected={impacts} onChange={(v) => { onImpactsChange(v); clear('impacts'); }} otherText={impactsOther} onOtherTextChange={onImpactsOtherChange} maxSelections={3} required error={errors.has('impacts')} lang={lang} />
       </div>
       <NavigationButtons onBack={onBack} onNext={validate} lang={lang} />
