@@ -58,7 +58,7 @@ export async function submitSurvey(input: SurveySubmission) {
 			s8_impacts_other: answers.impactsOther || null,
 			s9_one_thing_differently: answers.evidence?.oneThing || null,
 			s9_real_example: answers.evidence?.example || null,
-			s9_contributed_most: answers.evidence?.contributedMost || null,
+			s9_contributed_most: answers.evidence?.contributedMost || [],
 			s9_contributed_most_other: answers.evidenceOther || null,
 			s9_aspire_contribution: answers.evidence?.aspireContribution || null,
 			s9_aspire_detail: answers.evidence?.aspireDetail || null,

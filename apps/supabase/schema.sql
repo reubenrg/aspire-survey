@@ -24,7 +24,7 @@ create table if not exists public.survey_responses (
   s8_impacts_other text,
   s9_one_thing_differently text,
   s9_real_example text,
-  s9_contributed_most text,
+  s9_contributed_most text[] not null default '{}',
   s9_contributed_most_other text,
   s9_aspire_contribution text,
   s9_aspire_detail text,

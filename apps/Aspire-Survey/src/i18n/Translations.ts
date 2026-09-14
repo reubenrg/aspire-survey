@@ -119,6 +119,8 @@ const ta: TranslationMap = {
   'Aspire Program habits are relevant to the responsibilities of my role': 'Aspire பழக்கங்கள் என் பங்கின் பொறுப்புகளுக்குப் பொருத்தமானவை',
 
   // — Section 6: Habit —
+  'Habits, Support and Impact': 'பழக்கங்கள், ஆதரவு மற்றும் தாக்கம்',
+  'Barriers and Performance Clarity': 'தடைகள் மற்றும் செயல்திறன் தெளிவு',
   'Has the Habit Become Part of Your Work?': 'பழக்கம் உங்கள் பணியின் ஒரு பகுதியாக மாறியுள்ளதா?',
   'Which statement best describes the behaviour you are currently practising through the Aspire Program?': 'Aspire மூலம் நீங்கள் தற்போது பயிற்சி செய்யும் நடத்தையை எந்த கூற்று சிறப்பாக விவரிக்கிறது?',
   'I usually do it only when reminded': 'நினைவூட்டப்படும்போது மட்டுமே நான் வழக்கமாக இதைச் செய்கிறேன்',
@@ -165,11 +167,11 @@ const ta: TranslationMap = {
 
   // — Section 9: Evidence —
   'Real Evidence of Change': 'மாற்றத்தின் உண்மையான சான்று',
-  'What is ONE thing you do differently at work today compared with April 2026?': 'ஏப்ரல் 2026 உடன் ஒப்பிடுகையில் இன்று நீங்கள் பணியில் வித்தியாசமாக செய்யும் ஒரு விஷயம் என்ன?',
+  'What is ONE thing you have started doing differently at work in the last six months?': 'கடந்த ஆறு மாதங்களில் நீங்கள் பணியில் வித்தியாசமாகச் செய்யத் தொடங்கிய ஒரு விஷயம் என்ன?',
   'Give one real example where doing this differently helped you or your team.': 'இதை வித்தியாசமாக செய்வது உங்களுக்கு அல்லது உங்கள் குழுவிற்கு உதவிய ஒரு உண்மையான உதாரணத்தைக் கொடுங்கள்.',
   'For example, it may have helped you solve a problem, avoid an issue, complete work better, improve reliability, save time, communicate better, support someone else or improve a process.':
     'உதாரணமாக, இது ஒரு சிக்கலைத் தீர்க்கவும், ஒரு பிரச்சனையைத் தவிர்க்கவும், பணியை சிறப்பாக நிறைவு செய்யவும், நம்பகத்தன்மையை மேம்படுத்தவும், நேரத்தை மிச்சப்படுத்தவும், சிறப்பாகத் தொடர்புகொள்ளவும், வேறொருவருக்கு ஆதரவளிக்கவும் அல்லது ஒரு செயல்முறையை மேம்படுத்தவும் உதவியிருக்கலாம்.',
-  'What do you believe contributed most to this specific change?': 'இந்த குறிப்பிட்ட மாற்றத்திற்கு அதிகம் பங்களித்தது என்று நீங்கள் நம்புகிறீர்கள்?',
+  'What do you believe contributed most to this specific change? (Select up to 3)': 'இந்த குறிப்பிட்ட மாற்றத்திற்கு அதிகம் பங்களித்தது என்று நீங்கள் நம்புகிறீர்கள்? (3 வரை தேர்ந்தெடுக்கவும்)',
   'Manager / Team Lead coaching': 'மேலாளர் / குழுத் தலைவர் பயிற்சி',
   'Work experience / practice': 'பணி அனுபவம் / பயிற்சி',
   'Feedback': 'கருத்து',
@@ -400,6 +402,8 @@ const hi: TranslationMap = {
   'Aspire Program habits are relevant to the responsibilities of my role': 'Aspire की आदतें मेरी भूमिका की जिम्मेदारियों से प्रासंगिक हैं',
 
   // — Section 6: Habit —
+  'Habits, Support and Impact': 'आदतें, सहयोग और प्रभाव',
+  'Barriers and Performance Clarity': 'बाधाएं और प्रदर्शन स्पष्टता',
   'Has the Habit Become Part of Your Work?': 'क्या आदत आपके काम का हिस्सा बन गई है?',
   'Which statement best describes the behaviour you are currently practising through the Aspire Program?': 'कौन सा कथन Aspire के माध्यम से आप वर्तमान में जो व्यवहार अभ्यास कर रहे हैं उसका सबसे अच्छा वर्णन करता है?',
   'I usually do it only when reminded': 'मैं आमतौर पर केवल याद दिलाने पर ही करता/करती हूं',
@@ -446,11 +450,11 @@ const hi: TranslationMap = {
 
   // — Section 9: Evidence —
   'Real Evidence of Change': 'बदलाव का वास्तविक प्रमाण',
-  'What is ONE thing you do differently at work today compared with April 2026?': 'अप्रैल 2026 की तुलना में आज आप काम पर एक ऐसी चीज़ क्या करते हैं जो अलग है?',
+  'What is ONE thing you have started doing differently at work in the last six months?': 'पिछले छह महीनों में आपने काम पर अलग तरीके से करना शुरू किया हो, ऐसी एक चीज़ क्या है?',
   'Give one real example where doing this differently helped you or your team.': 'एक वास्तविक उदाहरण दें जहां इसे अलग तरीके से करने से आपको या आपकी टीम को मदद मिली।',
   'For example, it may have helped you solve a problem, avoid an issue, complete work better, improve reliability, save time, communicate better, support someone else or improve a process.':
     'उदाहरण के लिए, इससे आपको किसी समस्या को हल करने, किसी मुद्दे से बचने, काम बेहतर ढंग से पूरा करने, विश्वसनीयता में सुधार करने, समय बचाने, बेहतर संवाद करने, किसी और को सहयोग देने या किसी प्रक्रिया में सुधार करने में मदद मिली हो।',
-  'What do you believe contributed most to this specific change?': 'आप मानते हैं कि इस विशिष्ट बदलाव में सबसे अधिक किसका योगदान रहा?',
+  'What do you believe contributed most to this specific change? (Select up to 3)': 'आप मानते हैं कि इस विशिष्ट बदलाव में सबसे अधिक किसका योगदान रहा? (3 तक चुनें)',
   'Manager / Team Lead coaching': 'प्रबंधक / टीम लीड कोचिंग',
   'Work experience / practice': 'कार्य अनुभव / अभ्यास',
   'Feedback': 'प्रतिक्रिया',

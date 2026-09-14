@@ -10,19 +10,16 @@ import ChangeStep from './components/Steps/ChangeStep';
 import ProblemsStep from './components/Steps/ProblemsStep';
 import ManagerStep from './components/Steps/ManagerStep';
 import AspireBehaviourStep from './components/Steps/AspireBehaviourStep';
-import HabitStep from './components/Steps/HabitStep';
-import HelpedImproveStep from './components/Steps/HelpedImproveStep';
-import ImpactSeenStep from './components/Steps/ImpactSeenStep';
+import HabitImpactStep from './components/Steps/HabitImpactStep';
 import EvidenceStep from './components/Steps/EvidenceStep';
-import BarriersStep from './components/Steps/BarriersStep';
-import PMSStep from './components/Steps/PMSStep';
+import BarriersClarityStep from './components/Steps/BarriersClarityStep';
 import RoleStep from './components/Steps/RoleStep';
 import FinalQuestionStep from './components/Steps/FinalQuestionStep';
 import ThankYouPage from './components/Steps/ThankYouPage';
 import { HABIT_LEVELS } from './data/SurveyData';
 
 // 0=welcome, 1–13=sections, 14=thankYou
-const TOTAL = 13;
+const TOTAL = 10;
 const STEP_LABELS = [
   '',
   ...Array.from({ length: TOTAL }, (_, i) => `Section ${i + 1} of ${TOTAL}`),
@@ -59,7 +56,7 @@ export default function App() {
   const [impactsOther, setImpactsOther] = useState('');
 
   // Section 9
-  const [evidence, setEvidence] = useState({ oneThing: '', example: '', contributedMost: '', aspireContribution: '', aspireDetail: '' });
+  const [evidence, setEvidence] = useState({ oneThing: '', example: '', contributedMost: [] as string[], aspireContribution: '', aspireDetail: '' });
   const [evidenceOther, setEvidenceOther] = useState('');
 
   // Section 10
@@ -166,15 +163,16 @@ export default function App() {
           />
         )}
         {step === 6 && (
-          <HabitStep habitLevel={habitLevel} onHabitChange={setHabitLevel} onNext={next} onBack={back} />
+          <HabitImpactStep
+            habitLevel={habitLevel} onHabitChange={setHabitLevel}
+            factors={factors} onFactorsChange={setFactors}
+            factorsOther={factorsOther} onFactorsOtherChange={setFactorsOther}
+            impacts={impacts} onImpactsChange={setImpacts}
+            impactsOther={impactsOther} onImpactsOtherChange={setImpactsOther}
+            onNext={next} onBack={back}
+          />
         )}
         {step === 7 && (
-          <HelpedImproveStep factors={factors} onFactorsChange={setFactors} otherText={factorsOther} onOtherTextChange={setFactorsOther} onNext={next} onBack={back} />
-        )}
-        {step === 8 && (
-          <ImpactSeenStep impacts={impacts} onImpactsChange={setImpacts} otherText={impactsOther} onOtherTextChange={setImpactsOther} onNext={next} onBack={back} />
-        )}
-        {step === 9 && (
           <EvidenceStep
             oneThing={evidence.oneThing} example={evidence.example}
             contributedMost={evidence.contributedMost} aspireContribution={evidence.aspireContribution}
@@ -184,32 +182,31 @@ export default function App() {
             onNext={next} onBack={back}
           />
         )}
-        {step === 10 && (
-          <BarriersStep
+        {step === 8 && (
+          <BarriersClarityStep
             barrier={barrier} helpOption={helpOption}
             barrierOther={barrierOther} helpOther={helpOther}
+            pmsClarity={pmsClarity}
             onBarrierChange={setBarrier} onHelpChange={setHelpOption}
             onBarrierOtherChange={setBarrierOther} onHelpOtherChange={setHelpOther}
+            onPmsClarityChange={setPmsClarity}
             onNext={next} onBack={back}
           />
         )}
-        {step === 11 && (
-          <PMSStep value={pmsClarity} onChange={setPmsClarity} onNext={next} onBack={back} />
-        )}
-        {step === 12 && (
+        {step === 9 && (
           <RoleStep
             role={aboutYou.role} answers={roleAnswers}
             onChange={(r, v) => setRoleAnswers((p) => ({ ...p, [r]: v }))}
             onNext={next} onBack={back}
           />
         )}
-        {step === 13 && (
+        {step === 10 && (
           <FinalQuestionStep
             value={finalAnswer} onChange={setFinalAnswer}
             onSubmit={handleSubmit} onBack={back} isSubmitting={isSubmitting}
           />
         )}
-        {step === 14 && <ThankYouPage />}
+        {step === 11 && <ThankYouPage />}
       </div>
     </LanguageProvider>
   );
