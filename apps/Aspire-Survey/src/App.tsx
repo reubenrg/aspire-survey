@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import SurveyToaster from './components/SurveyToaster';
-import { submitSurvey } from 'zitejs/api';
+import { submitSurvey } from './api/submitSurvey';
 import { LanguageProvider } from './i18n/LanguageContext';
 import SurveyHeader from './components/SurveyHeader';
 import WelcomePage from './components/Steps/WelcomePage';

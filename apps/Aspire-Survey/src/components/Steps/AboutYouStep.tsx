@@ -1,4 +1,4 @@
-import { cn } from '@project/components/lib/utils';
+import { cn } from '../../lib/utils';
 import { ROLES, LOCATIONS } from '../../data/SurveyData';
 import NavigationButtons from '../NavigationButtons';
 import { useState } from 'react';

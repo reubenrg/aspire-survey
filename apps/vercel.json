@@ -1,6 +1,7 @@
 {
+  "framework": null,
+  "installCommand": "npm install --no-audit --no-fund",
   "buildCommand": "npm run build",
   "outputDirectory": "Aspire-Survey/dist",
-  "installCommand": "npm install --legacy-peer-deps --no-audit --no-fund",
-  "framework": "vite"
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

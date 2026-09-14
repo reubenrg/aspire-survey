@@ -1,4 +1,4 @@
-import { cn } from '@project/components/lib/utils';
+import { cn } from '../lib/utils';
 import { t, type Lang } from '../i18n/Translations';
 
 interface Props {

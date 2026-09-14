@@ -4,7 +4,7 @@ export default {
   darkMode: ["class"],
   content: [
     "./Aspire-Survey/src/**/*.{ts,tsx}",
-    "../packages/components/**/*.{ts,tsx}",
+    
   ],
   theme: {
     extend: {

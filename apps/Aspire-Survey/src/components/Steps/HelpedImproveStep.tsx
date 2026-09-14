@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { IMPROVEMENT_FACTORS } from '../../data/SurveyData';
-import CheckboxSelect from '../CheckboxSelect';
+import CheckboxSelect from '../CheckBoxSelect';
 import NavigationButtons from '../NavigationButtons';
 import { useLang } from '../../i18n/LanguageContext';
 import { t } from '../../i18n/Translations';
