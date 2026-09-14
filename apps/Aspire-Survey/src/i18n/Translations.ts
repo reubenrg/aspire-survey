@@ -15,8 +15,8 @@ const ta: TranslationMap = {
   // — Welcome Page —
   'S2M Health × Aspire': 'S2M Health × Aspire',
   'Behaviour & Performance Impact Survey — 2026': 'நடத்தை மற்றும் செயல்திறன் தாக்க ஆய்வு — 2026',
-  'Since April 2026, the Aspire Program has been working with S2M Health employees through role-specific habit formation programs designed to strengthen day-to-day workplace behaviours and improve how work is approached, managed and completed.':
-    'ஏப்ரல் 2026 முதல், Aspire S2M Health ஊழியர்களுடன் பணியிட நடத்தைகளை வலுப்படுத்தவும், பணி அணுகுமுறை, மேலாண்மை மற்றும் நிறைவு ஆகியவற்றை மேம்படுத்தவும் வடிவமைக்கப்பட்ட பணி-சார்ந்த பழக்க உருவாக்க திட்டங்களின் மூலம் பணிபுரிந்து வருகிறது.',
+  'Since last six months, the Aspire Team has been working with S2M Health employees through role-specific habit formation programs designed to strengthen day-to-day workplace behaviours and improve how work is approached, managed and completed.':
+    'கடந்த ஆறு மாதங்களாக, Aspire குழு S2M Health ஊழியர்களுடன் பணியிட நடத்தைகளை வலுப்படுத்தவும், பணி அணுகுமுறை, மேலாண்மை மற்றும் நிறைவு ஆகியவற்றை மேம்படுத்தவும் வடிவமைக்கப்பட்ட பணி-சார்ந்த பழக்க உருவாக்க திட்டங்களின் மூலம் பணிபுரிந்து வருகிறது.',
   'This survey is intended to understand:': 'இந்த ஆய்வு பின்வருவனவற்றைப் புரிந்துகொள்ள உதவுகிறது:',
   'What has changed in the way you work?': 'உங்கள் பணி முறையில் என்ன மாறியுள்ளது?',
   'What has helped create that change?': 'அந்த மாற்றத்தை உருவாக்க எது உதவியது?',
@@ -305,8 +305,8 @@ const hi: TranslationMap = {
   // — Welcome Page —
   'S2M Health × Aspire': 'S2M Health × Aspire',
   'Behaviour & Performance Impact Survey — 2026': 'व्यवहार और प्रदर्शन प्रभाव सर्वेक्षण — 2026',
-  'Since April 2026, the Aspire Program has been working with S2M Health employees through role-specific habit formation programs designed to strengthen day-to-day workplace behaviours and improve how work is approached, managed and completed.':
-    'अप्रैल 2026 से, Aspire S2M Health कर्मचारियों के साथ भूमिका-विशिष्ट आदत निर्माण कार्यक्रमों के माध्यम से काम कर रहा है जो दैनिक कार्यस्थल व्यवहारों को मजबूत करने और काम के दृष्टिकोण, प्रबंधन और पूर्णता को बेहतर बनाने के लिए डिज़ाइन किए गए हैं।',
+  'Since last six months, the Aspire Team has been working with S2M Health employees through role-specific habit formation programs designed to strengthen day-to-day workplace behaviours and improve how work is approached, managed and completed.':
+    'पिछले छह महीनों से, Aspire टीम S2M Health कर्मचारियों के साथ भूमिका-विशिष्ट आदत निर्माण कार्यक्रमों के माध्यम से काम कर रही है जो दैनिक कार्यस्थल व्यवहारों को मजबूत करने और काम के दृष्टिकोण, प्रबंधन और पूर्णता को बेहतर बनाने के लिए डिज़ाइन किए गए हैं।',
   'This survey is intended to understand:': 'यह सर्वेक्षण निम्नलिखित को समझने के लिए है:',
   'What has changed in the way you work?': 'आपके काम करने के तरीके में क्या बदलाव आया है?',
   'What has helped create that change?': 'उस बदलाव को लाने में किसने मदद की?',

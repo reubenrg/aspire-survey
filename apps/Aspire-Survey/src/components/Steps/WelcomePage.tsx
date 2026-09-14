@@ -26,7 +26,7 @@ export default function WelcomePage({ onStart }: Props) {
         </p>
         <div className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-lg mx-auto text-left space-y-4">
           <p>
-            {t('Since April 2026, the Aspire Program has been working with S2M Health employees through role-specific habit formation programs designed to strengthen day-to-day workplace behaviours and improve how work is approached, managed and completed.', lang)}
+            {t('Since last six months, the Aspire Team has been working with S2M Health employees through role-specific habit formation programs designed to strengthen day-to-day workplace behaviours and improve how work is approached, managed and completed.', lang)}
           </p>
           <p>{t('This survey is intended to understand:', lang)}</p>
           <ul className="list-disc pl-5 space-y-1">
