@@ -283,7 +283,14 @@ const ta: TranslationMap = {
 
   // — Section 13: Final —
   'Final Question': 'இறுதி கேள்வி',
-  'If the Aspire Program or S2M could change ONE thing that would help you perform your role better, what should it be?': 'Aspire அல்லது S2M உங்கள் பணியை சிறப்பாகச் செய்ய உதவும் ஒரு விஷயத்தை மாற்ற முடிந்தால், அது என்னவாக இருக்க வேண்டும்?',
+  'Think about what is currently stopping you from performing at your best level at work.':
+    'தற்போது நீங்கள் பணியில் உங்கள் சிறந்த நிலையில் செயல்படுவதைத் தடுப்பது எது என்பதைப் பற்றி சிந்தியுங்கள்.',
+  'Focus only on your work performance — not facilities, food, transport, or general workplace amenities.':
+    'உங்கள் பணிச் செயல்திறனில் மட்டும் கவனம் செலுத்துங்கள் — வசதிகள், உணவு, போக்குவரத்து அல்லது பொதுவான பணியிட வசதிகள் அல்ல.',
+  'If ONE thing could change in the way your performance is guided, supported, developed, reviewed, or improved, what should that ONE thing be?':
+    'உங்கள் செயல்திறன் வழிநடத்தப்படும், ஆதரிக்கப்படும், மேம்படுத்தப்படும், மதிப்பாய்வு செய்யப்படும் அல்லது முன்னேற்றப்படும் விதத்தில் ஒரு விஷயம் மட்டும் மாற முடியும் என்றால், அந்த ஒரு விஷயம் என்னவாக இருக்க வேண்டும்?',
+  'Explain what needs to change and how that change would help you deliver better results in your role.':
+    'என்ன மாற வேண்டும் என்பதையும், அந்த மாற்றம் உங்கள் பணியில் சிறந்த முடிவுகளை வழங்க எவ்வாறு உதவும் என்பதையும் விளக்குங்கள்.',
 
   // — Thank You —
   'Thank You!': 'நன்றி!',
@@ -555,7 +562,14 @@ const hi: TranslationMap = {
 
   // — Section 13: Final —
   'Final Question': 'अंतिम प्रश्न',
-  'If the Aspire Program or S2M could change ONE thing that would help you perform your role better, what should it be?': 'अगर Aspire या S2M एक ऐसी चीज़ बदल सकते हैं जो आपकी भूमिका को बेहतर ढंग से निभाने में मदद करे, तो वह क्या होनी चाहिए?',
+  'Think about what is currently stopping you from performing at your best level at work.':
+    'इस बारे में सोचें कि इस समय आपको काम पर अपने सर्वश्रेष्ठ स्तर पर प्रदर्शन करने से क्या रोक रहा है।',
+  'Focus only on your work performance — not facilities, food, transport, or general workplace amenities.':
+    'केवल अपने कार्य प्रदर्शन पर ध्यान दें — सुविधाओं, भोजन, परिवहन या सामान्य कार्यस्थल सुविधाओं पर नहीं।',
+  'If ONE thing could change in the way your performance is guided, supported, developed, reviewed, or improved, what should that ONE thing be?':
+    'यदि आपके प्रदर्शन को जिस तरह से दिशा दी जाती है, सहयोग दिया जाता है, विकसित किया जाता है, समीक्षा की जाती है या बेहतर बनाया जाता है, उसमें केवल एक चीज़ बदल सकती हो, तो वह एक चीज़ क्या होनी चाहिए?',
+  'Explain what needs to change and how that change would help you deliver better results in your role.':
+    'बताएं कि क्या बदलने की ज़रूरत है और वह बदलाव आपकी भूमिका में बेहतर परिणाम देने में आपकी कैसे मदद करेगा।',
 
   // — Thank You —
   'Thank You!': 'धन्यवाद!',
