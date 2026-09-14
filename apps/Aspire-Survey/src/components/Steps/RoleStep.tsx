@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ROLE_QUESTIONS, AGREE_SCALE } from '../../data/SurveyData';
 import LikertMatrix from '../LikertMatrix';
 import NavigationButtons from '../NavigationButtons';
-import { Badge } from '@project/components/ui/badge';
+import { Badge } from '../ui/badge';
 import { useLang } from '../../i18n/LanguageContext';
 import { t } from '../../i18n/Translations';
 

@@ -1,4 +1,4 @@
-import { Button } from '@project/components/ui/button';
+import { Button } from './ui/button';
 import { t, type Lang } from '../i18n/Translations';
 
 interface Props {

@@ -52,7 +52,9 @@ export async function submitSurvey(input: SurveySubmission) {
 			apikey: supabaseAnonKey,
 			Authorization: `Bearer ${supabaseAnonKey}`,
 			'Content-Type': 'application/json',
-			Prefer: 'return=representation',
+			// Deliberately NOT 'return=representation': echoing the row back requires a
+			// SELECT policy, and responses must stay unreadable to the anon key.
+			Prefer: 'return=minimal',
 		},
 		body: JSON.stringify({
 			employee_id: input.employeeId,
@@ -105,6 +107,5 @@ export async function submitSurvey(input: SurveySubmission) {
 		throw new Error(message);
 	}
 
-	const records = await response.json() as Array<{ id: string }>;
-	return { success: true, id: records[0]?.id || input.employeeId };
+	return { success: true, id: input.employeeId };
 }

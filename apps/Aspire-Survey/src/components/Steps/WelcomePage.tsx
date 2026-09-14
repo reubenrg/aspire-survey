@@ -1,4 +1,4 @@
-import { Button } from '@project/components/ui/button';
+import { Button } from '../ui/button';
 import { ClipboardCheck, Clock } from 'lucide-react';
 import LanguageToggle from '../LanguageToggle';
 import { useLang } from '../../i18n/LanguageContext';
