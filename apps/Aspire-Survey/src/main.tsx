@@ -13,7 +13,7 @@ function RuntimeErrorFallback(props: { error: Error }) {
       <div className="relative w-full max-w-xl rounded border-t-4 border-t-red-500 bg-white p-4 shadow-lg">
         <h3 className="mb-2 font-medium">Issue rendering the survey</h3>
         <p className="mb-4 text-sm text-gray-600">
-          Something went wrong while loading this page. Try reloading — your answers are only
+          Something went wrong while loading this page. Try reloading. Your answers are only
           saved once you submit.
         </p>
         <pre className="overflow-auto rounded border-l-4 border-red-500 bg-red-50 p-4 font-mono text-sm text-red-900">

@@ -33,7 +33,7 @@ export default function FinalQuestionStep({ value, onChange, onSubmit, onBack, i
           constraint before they start writing, not after. */}
       <div className="mb-6 rounded-lg border-l-4 border-l-primary/50 border border-border/60 bg-muted/40 px-4 py-3">
         <p className="text-xs leading-relaxed text-muted-foreground">
-          {t('Focus only on your work performance — not facilities, food, transport, or general workplace amenities.', lang)}
+          {t('Focus only on your work performance not facilities, food, transport, or general workplace amenities.', lang)}
         </p>
       </div>
 
