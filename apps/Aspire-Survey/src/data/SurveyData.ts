@@ -26,7 +26,7 @@ export const CHANGE_ROWS = [
 ];
 
 export const CHANGE_SCALE = [
-  '1 – Reduced', '2 – Slightly reduced', '3 – No meaningful change', '4 – Improved', '5 – Improved significantly',
+  'Reduced', 'Slightly reduced', 'No meaningful change', 'Improved', 'Improved significantly',
 ];
 
 // Section 3 — How Do You Handle Problems?
@@ -61,7 +61,7 @@ export const MANAGER_ROWS = [
 ];
 
 export const AGREE_SCALE = [
-  '1 – Strongly Disagree', '2 – Disagree', '3 – Neutral', '4 – Agree', '5 – Strongly Agree',
+  'Strongly Disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly Agree',
 ];
 
 export const MANAGER_FREQUENCY_OPTIONS = [
