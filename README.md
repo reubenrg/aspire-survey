@@ -29,9 +29,6 @@ apps/
       data/SurveyData.ts
 ```
 
-`packages/` is left over from the Zite export and is no longer referenced by the
-build. It can be deleted.
-
 ## Local development
 
 ```bash
