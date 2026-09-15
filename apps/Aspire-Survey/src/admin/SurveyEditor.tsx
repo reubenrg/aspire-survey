@@ -14,13 +14,15 @@ interface Props {
   definition: SurveyDefinition;
   published: boolean;
   saving: boolean;
+  /** A viewer or analyst can look but not change anything. */
+  readOnly?: boolean;
   onChange: (def: SurveyDefinition) => void;
   onPublishedChange: (p: boolean) => void;
   onSave: () => void;
 }
 
 export default function SurveyEditor({
-  definition: def, published, saving, onChange, onPublishedChange, onSave,
+  definition: def, published, saving, readOnly = false, onChange, onPublishedChange, onSave,
 }: Props) {
   const [tab, setTab] = useState<Tab>('build');
 
@@ -54,6 +56,7 @@ export default function SurveyEditor({
         <div className="min-w-0">
           <input
             value={def.title}
+            readOnly={readOnly}
             onChange={e => onChange({ ...def, title: e.target.value })}
             className="w-full border-0 bg-transparent p-0 font-display text-xl text-foreground outline-none"
             placeholder="Untitled survey"
@@ -64,10 +67,10 @@ export default function SurveyEditor({
         </div>
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-2 text-sm text-foreground">
-            <input type="checkbox" checked={published} onChange={e => onPublishedChange(e.target.checked)} className="h-4 w-4 accent-primary" />
+            <input type="checkbox" checked={published} disabled={readOnly} onChange={e => onPublishedChange(e.target.checked)} className="h-4 w-4 accent-primary" />
             Published
           </label>
-          <Button onClick={onSave} disabled={saving || !!sqlResult.error}>
+          <Button onClick={onSave} disabled={readOnly || saving || !!sqlResult.error}>
             {saving ? 'Saving…' : 'Save'}
           </Button>
         </div>
