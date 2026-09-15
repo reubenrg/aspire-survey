@@ -1,15 +1,12 @@
 import { supabase } from '../lib/supabase';
 import { tableNameFor } from '../engine/definition';
 import type { SurveyDefinition } from '../engine/types';
+import { atLeast, type PrivacyMode, type Role } from './labels';
 
-export type Role = 'viewer' | 'analyst' | 'editor' | 'owner';
-
-/** Ranking mirrors survey_role_rank() in the database. Keep the two in step. */
-const RANK: Record<Role, number> = { viewer: 1, analyst: 2, editor: 3, owner: 4 };
-
-export function atLeast(role: Role | null, minimum: Role): boolean {
-  return role !== null && RANK[role] >= RANK[minimum];
-}
+// Role and atLeast are pure (no Supabase dependency) and live in labels.ts so
+// they can be unit tested without a database; re-exported here since this is
+// where the rest of the app has always imported them from.
+export { atLeast, type Role };
 
 export interface Organization {
   id: string;
@@ -17,6 +14,17 @@ export interface Organization {
   slug: string;
   created_at: string;
 }
+
+export const SURVEY_CATEGORIES = [
+  'Employee Feedback',
+  'Engagement',
+  'Performance Assessment',
+  'Training Effectiveness',
+  'Habit Formation Impact',
+  'Behaviour Change',
+  'Manager Feedback',
+  'Custom',
+] as const;
 
 export interface SurveyRow {
   id: string;
@@ -28,6 +36,11 @@ export interface SurveyRow {
   organization_id: string | null;
   current_version: number;
   closed_at: string | null;
+  archived_at: string | null;
+  privacy_mode: PrivacyMode;
+  category: string | null;
+  purpose: string | null;
+  created_by: string | null;
   updated_at: string;
 }
 
@@ -44,7 +57,7 @@ export interface OrganizationGroup {
 }
 
 const SURVEY_COLUMNS =
-  'id, slug, title, definition, table_name, published, organization_id, current_version, closed_at, updated_at';
+  'id, slug, title, definition, table_name, published, organization_id, current_version, closed_at, archived_at, privacy_mode, category, purpose, created_by, updated_at';
 
 function fail(error: { code?: string; message: string }, action: string): never {
   if (error.code === '42501') {
@@ -151,6 +164,96 @@ export async function getSurvey(slug: string): Promise<SurveyRow | null> {
     .maybeSingle();
   if (error) fail(error, 'open this survey');
   return (data as SurveyRow) ?? null;
+}
+
+/**
+ * Creates the survey row the Create Survey wizard produces: a draft with no
+ * questions of its own yet beyond the blank starting point, filed under a
+ * customer, with the category and privacy mode decided up front because both
+ * are awkward to change honestly once responses exist.
+ */
+export async function createSurveyDraft(input: {
+  definition: SurveyDefinition;
+  organizationId: string;
+  privacyMode: PrivacyMode;
+  category: string;
+  purpose: string;
+}): Promise<SurveyRow> {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .from('surveys')
+    .insert({
+      slug: input.definition.slug,
+      title: input.definition.title,
+      definition: input.definition,
+      table_name: tableNameFor(input.definition),
+      published: false,
+      organization_id: input.organizationId,
+      current_version: 1,
+      privacy_mode: input.privacyMode,
+      category: input.category || null,
+      purpose: input.purpose || null,
+      created_by: user?.email ?? null,
+    })
+    .select(SURVEY_COLUMNS)
+    .single();
+
+  if (error) {
+    if (error.code === '23505') throw new Error(`A survey already exists at "/s/${input.definition.slug}".`);
+    fail(error, 'create this survey');
+  }
+
+  await supabase.from('survey_versions').insert({
+    survey_id: (data as SurveyRow).id,
+    version_number: 1,
+    definition: input.definition,
+    created_by: user?.email ?? null,
+  });
+
+  return data as SurveyRow;
+}
+
+/**
+ * Copies a survey's definition, questions and settings into a fresh draft.
+ * Never copies responses, invitations or the audience: a duplicate is a new
+ * survey that happens to start from the same shape, not a clone of live data.
+ */
+export async function duplicateSurvey(row: SurveyRow): Promise<SurveyRow> {
+  const organizationId = row.organization_id;
+  if (!organizationId) throw new Error('This survey has no customer to duplicate it into.');
+  const title = `${row.title} (copy)`;
+  let slug = slugify(title) || `${row.slug}-copy`;
+  // A slug collision is likely for a straight duplicate; fall back to one
+  // that is certain to be free rather than asking the admin to retype it.
+  const { data: clash } = await supabase.from('surveys').select('id').eq('slug', slug).maybeSingle();
+  if (clash) slug = `${slug}-${Date.now().toString(36)}`;
+
+  const definition: SurveyDefinition = { ...row.definition, slug, title };
+  return createSurveyDraft({
+    definition,
+    organizationId,
+    privacyMode: row.privacy_mode,
+    category: row.category ?? '',
+    purpose: row.purpose ?? '',
+  });
+}
+
+/** Flips published on its own, without touching the definition or bumping its version. */
+export async function setPublished(slug: string, published: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('surveys')
+    .update({ published, updated_at: new Date().toISOString() })
+    .eq('slug', slug);
+  if (error) fail(error, published ? 'publish this survey' : 'unpublish this survey');
+}
+
+/** Archiving is the end of a survey's lifecycle; the row and its responses stay. */
+export async function setArchived(slug: string, archived: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('surveys')
+    .update({ archived_at: archived ? new Date().toISOString() : null })
+    .eq('slug', slug);
+  if (error) fail(error, 'archive this survey');
 }
 
 /**

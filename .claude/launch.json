@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "aspire-survey-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "apps", "run", "dev", "--", "--port", "5173", "--strictPort"],
+      "port": 5173
+    },
+    {
+      "name": "aspire-survey-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "apps", "run", "preview", "--", "--port", "4173", "--strictPort"],
+      "port": 4173
+    }
+  ]
+}

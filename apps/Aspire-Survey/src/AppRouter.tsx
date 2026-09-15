@@ -1,12 +1,18 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import App from './App';
 import SurveyPage from './routes/SurveyPage';
+import InvitePage from './routes/InvitePage';
 import AdminGate from './admin/AdminGate';
 import AdminShell from './admin/AdminShell';
 import Overview from './admin/pages/Overview';
 import Customers from './admin/pages/Customers';
 import ComingSoon from './admin/pages/ComingSoon';
-import { AdminEditor, AdminList } from './routes/AdminPages';
+import SurveyManagement from './admin/pages/SurveyManagement';
+import SurveyDetail from './admin/pages/SurveyDetail';
+import CreateSurvey from './admin/pages/CreateSurvey';
+import SurveyAudience from './admin/pages/SurveyAudience';
+import CustomerEmployees from './admin/pages/CustomerEmployees';
+import { AdminEditor } from './routes/AdminPages';
 import ReportPage from './admin/ReportPage';
 
 /**
@@ -20,11 +26,16 @@ export default function AppRouter() {
       <Routes>
         <Route path="/" element={<App />} />
         <Route path="/s/:slug" element={<SurveyPage />} />
+        <Route path="/r/:token" element={<InvitePage />} />
 
         <Route path="/admin" element={<AdminGate><AdminShell /></AdminGate>}>
           <Route index element={<Overview />} />
           <Route path="customers" element={<Customers />} />
-          <Route path="surveys" element={<AdminList />} />
+          <Route path="customers/:customerId/employees" element={<CustomerEmployees />} />
+          <Route path="surveys" element={<SurveyManagement />} />
+          <Route path="surveys/new" element={<CreateSurvey />} />
+          <Route path="surveys/:slug" element={<SurveyDetail />} />
+          <Route path="surveys/:slug/audience" element={<SurveyAudience />} />
           <Route path="responses" element={
             <ComingSoon
               title="Responses"

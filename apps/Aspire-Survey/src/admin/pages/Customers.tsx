@@ -109,6 +109,7 @@ export default function Customers() {
                   <Td className="whitespace-nowrap text-muted-foreground">{relativeTime(c.updated_at)}</Td>
                   <Td>
                     <div className="flex justify-end gap-1">
+                      <Link to={`/admin/customers/${c.id}/employees`}><Button variant="ghost" size="sm">Employees</Button></Link>
                       <Link to="/admin/surveys"><Button variant="ghost" size="sm">Surveys</Button></Link>
                       {canManage && (
                         <>

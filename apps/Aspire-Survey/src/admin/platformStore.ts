@@ -1,7 +1,8 @@
 import { supabase } from '../lib/supabase';
 import { slugify, type Organization } from './adminStore';
+import type { PrivacyMode, SurveyStatus } from './labels';
 
-export type SurveyStatus = 'DRAFT' | 'LIVE' | 'CLOSED' | 'ARCHIVED';
+export type { SurveyStatus };
 
 export interface OverviewStats {
   customers: number;
@@ -21,7 +22,11 @@ export interface SurveySummary {
   organization_id: string | null;
   organization_name: string | null;
   status: SurveyStatus;
+  privacy_mode: PrivacyMode;
+  category: string | null;
   responses: number;
+  audience: number;
+  completed: number;
   current_version: number;
   created_by: string | null;
   updated_at: string;
