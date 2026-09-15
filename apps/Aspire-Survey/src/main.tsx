@@ -7,8 +7,26 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 // '/react', not '/next' — this is a Vite SPA, and the Next entry pulls in
 // next/navigation hooks that do not exist here.
 import { Analytics } from '@vercel/analytics/react';
+import SurveyRenderer from './engine/SurveyRenderer';
+import { buildRow, tableNameFor } from './engine/definition';
+import { demoSurvey } from './surveys/demo';
 
 const queryClient = new QueryClient();
+
+/** Stage 1 scaffolding. Logs the row the engine would write, without a database. */
+function EngineDemo() {
+  return (
+    <SurveyRenderer
+      definition={demoSurvey}
+      onSubmit={async answers => {
+        const row = buildRow(demoSurvey, answers);
+        console.log('[engine] table:', tableNameFor(demoSurvey));
+        console.log('[engine] row:', row);
+        (window as unknown as { __engineRow?: unknown }).__engineRow = row;
+      }}
+    />
+  );
+}
 
 function RuntimeErrorFallback(props: { error: Error }) {
   return (
@@ -38,7 +56,12 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary fallbackRender={props => <RuntimeErrorFallback error={props.error} />}>
       <QueryClientProvider client={queryClient}>
-        <App />
+        {/* Stage 1 scaffolding: ?engine=demo renders the definition-driven
+            engine instead of the hand-written survey. Replaced by real
+            per-survey routing in stage 2. */}
+        {new URLSearchParams(window.location.search).get('engine') === 'demo'
+          ? <EngineDemo />
+          : <App />}
       </QueryClientProvider>
     </ErrorBoundary>
     {/* Outside the boundary on purpose: a crash in the survey should still
