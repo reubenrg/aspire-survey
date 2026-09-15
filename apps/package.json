@@ -6,10 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b tsconfig.app.json && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "gen:sql": "node --experimental-strip-types scripts/gen-sql.ts",
+    "test": "node --experimental-strip-types --test scripts/*.test.ts"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.2",
+    "@supabase/supabase-js": "^2.116.0",
     "@tanstack/react-query": "^5.74.9",
     "@vercel/analytics": "^2.0.1",
     "class-variance-authority": "^0.7.1",
@@ -18,6 +21,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-error-boundary": "^5.0.0",
+    "react-router-dom": "^7.18.3",
     "sonner": "^2.0.1",
     "tailwind-merge": "^3.0.2",
     "tailwindcss-animate": "^1.0.7"

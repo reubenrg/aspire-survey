@@ -1,12 +1,12 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
-import App from './App';
 import { ErrorBoundary } from 'react-error-boundary';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 // '/react', not '/next' — this is a Vite SPA, and the Next entry pulls in
 // next/navigation hooks that do not exist here.
 import { Analytics } from '@vercel/analytics/react';
+import AppRouter from './AppRouter';
 
 const queryClient = new QueryClient();
 
@@ -38,7 +38,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary fallbackRender={props => <RuntimeErrorFallback error={props.error} />}>
       <QueryClientProvider client={queryClient}>
-        <App />
+        <AppRouter />
       </QueryClientProvider>
     </ErrorBoundary>
     {/* Outside the boundary on purpose: a crash in the survey should still
