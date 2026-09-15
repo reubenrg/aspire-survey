@@ -1,6 +1,8 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import App from './App';
 import SurveyPage from './routes/SurveyPage';
+import AdminGate from './admin/AdminGate';
+import { AdminEditor, AdminList } from './routes/AdminPages';
 
 /**
  * `/` stays the original hand-written S2M survey, deliberately: it is live and
@@ -13,6 +15,8 @@ export default function AppRouter() {
       <Routes>
         <Route path="/" element={<App />} />
         <Route path="/s/:slug" element={<SurveyPage />} />
+        <Route path="/admin" element={<AdminGate><AdminList /></AdminGate>} />
+        <Route path="/admin/:slug" element={<AdminGate><AdminEditor /></AdminGate>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>

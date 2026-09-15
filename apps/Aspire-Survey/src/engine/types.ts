@@ -123,6 +123,12 @@ export interface SurveyDefinition {
   thankYou: { heading: string; body: string };
   sections: Section[];
   /**
+   * Translations for this survey's own strings, keyed by the English text, the
+   * same shape the hand-written survey uses. Anything missing falls back to
+   * English rather than showing a key.
+   */
+  i18n?: Record<string, { ta?: string; hi?: string }>;
+  /**
    * Answer used to enforce one response per person. Its column gets a unique
    * constraint, and a repeat submission is reported back as a duplicate.
    */

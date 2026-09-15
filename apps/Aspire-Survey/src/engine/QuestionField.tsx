@@ -3,7 +3,8 @@ import CheckboxSelect from '../components/CheckBoxSelect';
 import LikertMatrix from '../components/LikertMatrix';
 import TextArea from '../components/TextArea';
 import { cn } from '../lib/utils';
-import { t, type Lang } from '../i18n/Translations';
+import type { Lang } from '../i18n/Translations';
+import { useT } from './translate';
 import type { Answers, AnswerValue, Question } from './types';
 import { matrixRows, matrixTitle, otherKey } from './definition';
 
@@ -21,6 +22,7 @@ interface Props {
  * translation behaviour rather than reimplementing them.
  */
 export default function QuestionField({ question: q, answers, onChange, error, lang }: Props) {
+  const t = useT();
   const value = answers[q.id];
   const otherText = (answers[otherKey(q.id)] as string) || '';
   const setOther = (v: string) => onChange(otherKey(q.id), v);

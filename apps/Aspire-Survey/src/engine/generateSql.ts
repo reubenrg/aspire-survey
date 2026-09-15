@@ -63,6 +63,13 @@ export function generateCreateTableSql(def: SurveyDefinition): string {
     `  for insert`,
     `  to anon`,
     `  with check (true);`,
+    ``,
+    `-- A policy alone is not enough. PostgREST builds its schema cache from the`,
+    `-- relations a role has privileges on, so without this grant the table is`,
+    `-- invisible over the API and every request fails with PGRST205. Insert only:`,
+    `-- no select grant, so responses stay unreadable even if a policy were added`,
+    `-- by mistake later.`,
+    `grant insert on public.${table} to anon, authenticated;`,
   ];
 
   if (uniqueColumn) {

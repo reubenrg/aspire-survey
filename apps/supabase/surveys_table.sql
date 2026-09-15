@@ -28,6 +28,12 @@ create policy "Public can read published surveys"
   to anon
   using (published = true);
 
+-- A policy alone does not expose a table. PostgREST builds its schema cache
+-- from the relations a role has privileges on, so without this grant every
+-- request returns PGRST205 "could not find the table in the schema cache".
+-- Select only: the policy above still restricts anon to published rows.
+grant select on public.surveys to anon, authenticated;
+
 -- Admin write policies are added in stage 4, together with the sign-in and the
 -- allowlist that decides who counts as an admin. Until then this table is
 -- writable only from the SQL editor, which is the safe default.

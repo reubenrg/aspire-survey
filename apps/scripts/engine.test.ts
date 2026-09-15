@@ -39,6 +39,14 @@ test('responses are insert-only, never readable with the public key', () => {
   assert.doesNotMatch(sql, /for select/, 'a select policy would expose responses');
 });
 
+test('the response table is granted to anon, or PostgREST cannot see it', () => {
+  // A policy alone does not expose a table: without this grant every request
+  // fails with PGRST205, which is exactly how stage 2 first failed.
+  const sql = generateCreateTableSql(demoSurvey);
+  assert.match(sql, /grant insert on public\.survey_engine_demo to anon, authenticated;/);
+  assert.doesNotMatch(sql, /grant select on public\.survey_engine_demo/, 'responses must stay unreadable');
+});
+
 test('two questions writing the same column is rejected', () => {
   const clash: SurveyDefinition = {
     ...demoSurvey,

@@ -6,7 +6,7 @@ import NavigationButtons from '../components/NavigationButtons';
 import LanguageToggle from '../components/LanguageToggle';
 import { Button } from '../components/ui/button';
 import { LanguageProvider, useLang } from '../i18n/LanguageContext';
-import { t } from '../i18n/Translations';
+import { TranslateProvider, useT } from './translate';
 import QuestionField from './QuestionField';
 import { missingAnswers, visibleQuestions } from './definition';
 import type { Answers, AnswerValue, SurveyDefinition } from './types';
@@ -20,14 +20,17 @@ interface Props {
 export default function SurveyRenderer(props: Props) {
   return (
     <LanguageProvider>
-      <SurveyToaster />
-      <SurveyBody {...props} />
+      <TranslateProvider definition={props.definition}>
+        <SurveyToaster />
+        <SurveyBody {...props} />
+      </TranslateProvider>
     </LanguageProvider>
   );
 }
 
 function SurveyBody({ definition, onSubmit }: Props) {
   const { lang } = useLang();
+  const t = useT();
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
   const [errors, setErrors] = useState<Set<string>>(new Set());
