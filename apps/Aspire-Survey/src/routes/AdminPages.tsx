@@ -176,6 +176,7 @@ function SurveyRowItem({
             <Button variant="ghost" size="sm">Open</Button>
           </a>
         )}
+        <Link to={`/admin/${row.slug}/report`}><Button variant="ghost" size="sm">Results</Button></Link>
         <Link to={`/admin/${row.slug}`}><Button variant="outline" size="sm">Edit</Button></Link>
         {canDelete && (
           <Button
@@ -337,6 +338,9 @@ export function AdminEditor() {
   return (
     <>
       <div className="mx-auto max-w-5xl space-y-3 px-6 pt-4">
+        <Link to={`/admin/${slug}/report`} className="inline-block text-xs text-primary hover:underline">
+          View results and export →
+        </Link>
         {error && <Alert>{error}</Alert>}
         {!canEdit && (
           <div className="rounded-md border border-border border-l-4 border-l-muted-foreground bg-muted/40 px-4 py-3">

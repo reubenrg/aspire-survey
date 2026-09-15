@@ -27,6 +27,7 @@ export interface SurveyRow {
   published: boolean;
   organization_id: string | null;
   current_version: number;
+  closed_at: string | null;
   updated_at: string;
 }
 
@@ -43,7 +44,7 @@ export interface OrganizationGroup {
 }
 
 const SURVEY_COLUMNS =
-  'id, slug, title, definition, table_name, published, organization_id, current_version, updated_at';
+  'id, slug, title, definition, table_name, published, organization_id, current_version, closed_at, updated_at';
 
 function fail(error: { code?: string; message: string }, action: string): never {
   if (error.code === '42501') {

@@ -3,6 +3,7 @@ import App from './App';
 import SurveyPage from './routes/SurveyPage';
 import AdminGate from './admin/AdminGate';
 import { AdminEditor, AdminList } from './routes/AdminPages';
+import ReportPage from './admin/ReportPage';
 
 /**
  * `/` stays the original hand-written S2M survey, deliberately: it is live and
@@ -17,6 +18,7 @@ export default function AppRouter() {
         <Route path="/s/:slug" element={<SurveyPage />} />
         <Route path="/admin" element={<AdminGate><AdminList /></AdminGate>} />
         <Route path="/admin/:slug" element={<AdminGate><AdminEditor /></AdminGate>} />
+        <Route path="/admin/:slug/report" element={<AdminGate><ReportPage /></AdminGate>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>

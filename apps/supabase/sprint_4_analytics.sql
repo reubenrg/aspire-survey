@@ -169,8 +169,12 @@ begin
 
   -- Only columns the definition actually writes, so this cannot be pointed at
   -- an unrelated column of the table.
+  -- Must be a column the definition writes AND one with a bounded set of
+  -- answers. A breakdown over free text is one row per person with a count of
+  -- one beside each, which is not a distribution and can be arbitrarily large.
   if not exists (
-    select 1 from public.survey_report_columns(p_slug) c where c.column_name = p_column
+    select 1 from public.survey_report_columns(p_slug) c
+    where c.column_name = p_column and c.chartable
   ) then return; end if;
 
   select data_type = 'ARRAY' into is_array
