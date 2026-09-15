@@ -33,11 +33,21 @@ test('the identity column is not null and unique', () => {
   assert.match(sql, /employee_id text not null unique/);
 });
 
-test('responses are insert-only, never readable with the public key', () => {
+test('respondents can submit but never read, including their own answers', () => {
   const sql = generateCreateTableSql(demoSurvey);
   assert.match(sql, /enable row level security/);
   assert.match(sql, /for insert\n\s*to anon/);
-  assert.doesNotMatch(sql, /for select/, 'a select policy would expose responses');
+  // The invariant narrowed in sprint 4. Analysts may now read responses, so
+  // "no select policy at all" is no longer true. What must never appear is a
+  // select policy or grant reaching anon.
+  assert.doesNotMatch(sql, /for select\n\s*to anon/, 'anon must never be able to read responses');
+});
+
+test('analysts can read responses, gated on their role', () => {
+  const sql = generateCreateTableSql(demoSurvey);
+  assert.match(sql, /for select\n\s*to authenticated/);
+  assert.match(sql, /has_survey_role\(/);
+  assert.match(sql, /'analyst'/);
 });
 
 test('the response table is granted to anon, or PostgREST cannot see it', () => {
@@ -45,7 +55,10 @@ test('the response table is granted to anon, or PostgREST cannot see it', () => 
   // fails with PGRST205, which is exactly how stage 2 first failed.
   const sql = generateCreateTableSql(demoSurvey);
   assert.match(sql, /grant insert on public\.survey_engine_demo to anon, authenticated;/);
-  assert.doesNotMatch(sql, /grant select on public\.survey_engine_demo/, 'responses must stay unreadable');
+  // select is granted to authenticated only; the policy narrows that to
+  // analysts. anon gets insert and nothing more.
+  assert.match(sql, /grant select on public\.survey_engine_demo to authenticated;/);
+  assert.doesNotMatch(sql, /grant select on public\.survey_engine_demo to anon/, 'anon must never read responses');
 });
 
 test('two questions writing the same column is rejected', () => {
