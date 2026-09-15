@@ -54,11 +54,22 @@ test('the response table is granted to anon, or PostgREST cannot see it', () => 
   // A policy alone does not expose a table: without this grant every request
   // fails with PGRST205, which is exactly how stage 2 first failed.
   const sql = generateCreateTableSql(demoSurvey);
-  assert.match(sql, /grant insert on public\.survey_engine_demo to anon, authenticated;/);
+  assert.match(sql, /grant insert on public\.survey_engine_demo to anon;/);
   // select is granted to authenticated only; the policy narrows that to
   // analysts. anon gets insert and nothing more.
-  assert.match(sql, /grant select on public\.survey_engine_demo to authenticated;/);
+  assert.match(sql, /grant select, insert on public\.survey_engine_demo to authenticated;/);
   assert.doesNotMatch(sql, /grant select on public\.survey_engine_demo to anon/, 'anon must never read responses');
+});
+
+test('privileges are revoked before being granted', () => {
+  // Supabase grants ALL on a new public table to anon by default, including
+  // truncate, which row level security does not filter. Without the revoke,
+  // policies are the only barrier.
+  const sql = generateCreateTableSql(demoSurvey);
+  const revokeAt = sql.indexOf('revoke all on public.survey_engine_demo from anon;');
+  const grantAt = sql.indexOf('grant insert on public.survey_engine_demo to anon;');
+  assert.ok(revokeAt > -1, 'must revoke anon privileges');
+  assert.ok(grantAt > revokeAt, 'revoke must come before the grant or it undoes it');
 });
 
 test('two questions writing the same column is rejected', () => {

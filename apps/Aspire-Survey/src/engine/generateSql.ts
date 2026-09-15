@@ -77,14 +77,20 @@ export function generateCreateTableSql(def: SurveyDefinition): string {
     `  using (public.has_survey_role(`,
     `    (select s.organization_id from public.surveys s where s.table_name = '${table}'),`,
     `    'analyst'));`,
-    `grant select on public.${table} to authenticated;`,
     ``,
     `-- A policy alone is not enough. PostgREST builds its schema cache from the`,
     `-- relations a role has privileges on, so without this grant the table is`,
     `-- invisible over the API and every request fails with PGRST205. Insert only:`,
     `-- no select grant, so responses stay unreadable even if a policy were added`,
     `-- by mistake later.`,
-    `grant insert on public.${table} to anon, authenticated;`,
+    `-- Supabase's default privileges grant ALL on a new public table to anon,`,
+    `-- which would let the public key attempt update, delete and truncate.`,
+    `-- Truncate in particular is not filtered by row level security at all.`,
+    `-- Revoke first, then grant only what each role needs.`,
+    `revoke all on public.${table} from anon;`,
+    `grant insert on public.${table} to anon;`,
+    `revoke all on public.${table} from authenticated;`,
+    `grant select, insert on public.${table} to authenticated;`,
   ];
 
   if (uniqueColumn) {
