@@ -86,28 +86,10 @@ export default function AdminGate({ children }: { children: ReactNode }) {
 
   return (
     <AdminSessionContext.Provider value={value}>
-      <div className="min-h-screen bg-background">
-        <header className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur">
-          <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-6 py-3">
-            <a href="/admin" className="font-display text-sm text-foreground">Survey Admin</a>
-            <div className="flex items-center gap-3">
-              {globalRole && (
-                <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent-foreground">
-                  {globalRole}
-                </span>
-              )}
-              <span className="hidden text-xs text-muted-foreground sm:inline">{email}</span>
-              <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()}>Sign out</Button>
-            </div>
-          </div>
-        </header>
-        {roleError && (
-          <div className="mx-auto max-w-5xl px-6 pt-4">
-            <Alert>{roleError}</Alert>
-          </div>
-        )}
-        {children}
-      </div>
+      {roleError && (
+        <div className="mx-auto max-w-5xl px-6 pt-4"><Alert>{roleError}</Alert></div>
+      )}
+      {children}
     </AdminSessionContext.Provider>
   );
 }
