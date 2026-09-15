@@ -4,6 +4,9 @@ import './index.css';
 import App from './App';
 import { ErrorBoundary } from 'react-error-boundary';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+// '/react', not '/next' — this is a Vite SPA, and the Next entry pulls in
+// next/navigation hooks that do not exist here.
+import { Analytics } from '@vercel/analytics/react';
 
 const queryClient = new QueryClient();
 
@@ -38,5 +41,8 @@ createRoot(document.getElementById('root')!).render(
         <App />
       </QueryClientProvider>
     </ErrorBoundary>
+    {/* Outside the boundary on purpose: a crash in the survey should still
+        register the visit rather than disappearing from analytics. */}
+    <Analytics />
   </StrictMode>,
 );
