@@ -8,6 +8,7 @@ export interface SurveyRecord {
   definition: SurveyDefinition;
   tableName: string;
   published: boolean;
+  currentVersion: number;
 }
 
 export class SurveyNotFound extends Error {
@@ -26,7 +27,7 @@ export class SurveyNotFound extends Error {
 export async function loadSurvey(slug: string): Promise<SurveyRecord> {
   const { data, error } = await supabase
     .from('surveys')
-    .select('slug, title, definition, table_name, published')
+    .select('slug, title, definition, table_name, published, current_version')
     .eq('slug', slug)
     .maybeSingle();
 
@@ -39,6 +40,7 @@ export async function loadSurvey(slug: string): Promise<SurveyRecord> {
     definition: data.definition as SurveyDefinition,
     tableName: data.table_name,
     published: data.published,
+    currentVersion: data.current_version ?? 1,
   };
 }
 
@@ -51,7 +53,9 @@ export async function loadSurvey(slug: string): Promise<SurveyRecord> {
  * duplicate rather than a generic failure.
  */
 export async function submitResponse(record: SurveyRecord, answers: Answers): Promise<void> {
-  const row = buildRow(record.definition, answers);
+  // Stamp the version that produced these answers, so a row is always readable
+  // against the definition that was actually on screen when it was filled in.
+  const row = { ...buildRow(record.definition, answers), definition_version: record.currentVersion };
   const table = record.tableName || tableNameFor(record.definition);
 
   const { error } = await supabase.from(table).insert(row);

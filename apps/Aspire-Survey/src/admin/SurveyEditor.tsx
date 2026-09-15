@@ -6,6 +6,8 @@ import { generateFullSql } from '../engine/generateSql';
 import { translatableStrings } from '../engine/translate';
 import { tableNameFor } from '../engine/definition';
 import type { Section, SurveyDefinition } from '../engine/types';
+import { migrationForNewColumns, validateAdditive, type AdditiveIssue } from '../engine/additive';
+import { tableNameFor as tableFor } from '../engine/definition';
 import QuestionEditor, { newQuestion } from './QuestionEditor';
 
 type Tab = 'build' | 'preview' | 'translate' | 'sql';
@@ -16,15 +18,37 @@ interface Props {
   saving: boolean;
   /** A viewer or analyst can look but not change anything. */
   readOnly?: boolean;
+  /** The definition responses were collected under, for the additive-only guard. */
+  baseline?: SurveyDefinition;
+  /** Null when unknown or the table does not exist yet. */
+  responseCount?: number | null;
+  currentVersion?: number;
   onChange: (def: SurveyDefinition) => void;
   onPublishedChange: (p: boolean) => void;
   onSave: () => void;
 }
 
 export default function SurveyEditor({
-  definition: def, published, saving, readOnly = false, onChange, onPublishedChange, onSave,
+  definition: def, published, saving, readOnly = false,
+  baseline, responseCount = null, currentVersion,
+  onChange, onPublishedChange, onSave,
 }: Props) {
   const [tab, setTab] = useState<Tab>('build');
+
+  // Once answers exist, the shape of this survey is load-bearing: matrix rows
+  // map to columns by position, so a reorder silently rewrites what stored
+  // answers mean. The guard blocks rather than warns for exactly that reason.
+  const hasResponses = (responseCount ?? 0) > 0;
+  const issues: AdditiveIssue[] = useMemo(
+    () => (baseline ? validateAdditive(baseline, def, hasResponses) : []),
+    [baseline, def, hasResponses],
+  );
+  const blocking = issues.filter(i => i.severity === 'error');
+  const advisories = issues.filter(i => i.severity === 'warning');
+  const newColumnSql = useMemo(
+    () => (baseline ? migrationForNewColumns(baseline, def, tableFor(def)) : ''),
+    [baseline, def],
+  );
 
   // A survey with a broken definition should fail here, in the editor, rather
   // than as invalid SQL pasted into the database.
@@ -63,6 +87,8 @@ export default function SurveyEditor({
           />
           <p className="mt-0.5 font-mono text-xs text-muted-foreground">
             /s/{def.slug} → {tableNameFor(def)}
+            {currentVersion !== undefined && ` · v${currentVersion}`}
+            {responseCount !== null && ` · ${responseCount} response${responseCount === 1 ? '' : 's'}`}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -70,11 +96,44 @@ export default function SurveyEditor({
             <input type="checkbox" checked={published} disabled={readOnly} onChange={e => onPublishedChange(e.target.checked)} className="h-4 w-4 accent-primary" />
             Published
           </label>
-          <Button onClick={onSave} disabled={readOnly || saving || !!sqlResult.error}>
+          <Button onClick={onSave} disabled={readOnly || saving || !!sqlResult.error || blocking.length > 0}>
             {saving ? 'Saving…' : 'Save'}
           </Button>
         </div>
       </div>
+
+      {blocking.length > 0 && (
+        <div className="mb-4 rounded-md border border-border border-l-4 border-l-destructive bg-destructive/5 px-4 py-3">
+          <p className="text-xs font-medium text-destructive">
+            {blocking.length === 1 ? 'This change would' : `These ${blocking.length} changes would`} break
+            answers already collected
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {responseCount} response{responseCount === 1 ? '' : 's'} exist. Questions can be added, but
+            existing ones cannot be removed, renamed or reordered, because answers are stored in columns
+            fixed by position.
+          </p>
+          <ul className="mt-2 space-y-1.5">
+            {blocking.map((i, n) => (
+              <li key={n} className="text-xs text-foreground">
+                <span className="font-mono text-[11px] text-destructive">{i.subject}</span>
+                <span className="block text-muted-foreground">{i.message}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {advisories.length > 0 && (
+        <div className="mb-4 rounded-md border border-border border-l-4 border-l-muted-foreground bg-muted/40 px-4 py-3">
+          <p className="text-xs font-medium text-foreground">Worth knowing before you save</p>
+          <ul className="mt-2 space-y-1.5">
+            {advisories.map((i, n) => (
+              <li key={n} className="text-xs text-muted-foreground">{i.message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {sqlResult.error && (
         <div className="mb-4 rounded-md border-l-4 border-l-destructive border border-border bg-destructive/5 px-4 py-3">
@@ -179,6 +238,24 @@ export default function SurveyEditor({
               Copy SQL
             </Button>
           </div>
+          {newColumnSql && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-foreground">
+                This edit adds columns to an existing table
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Run this before publishing, or the new questions will have nowhere to write.
+              </p>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(newColumnSql)}>
+                  Copy ALTER statements
+                </Button>
+              </div>
+              <pre className="overflow-auto rounded-lg border border-border border-l-2 border-l-primary bg-muted/30 p-4 font-mono text-[11px] leading-relaxed text-foreground">
+                {newColumnSql}
+              </pre>
+            </div>
+          )}
           <pre className="max-h-[28rem] overflow-auto rounded-lg border border-border bg-muted/30 p-4 font-mono text-[11px] leading-relaxed text-foreground">
             {sqlResult.error ? `-- ${sqlResult.error}` : sqlResult.sql}
           </pre>

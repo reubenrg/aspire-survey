@@ -50,6 +50,7 @@ export function generateCreateTableSql(def: SurveyDefinition): string {
     `create table if not exists public.${table} (`,
     `  id uuid primary key default gen_random_uuid(),`,
     `  submitted_at timestamptz not null default now(),`,
+    `  definition_version int,`,
     ...body,
     `);`,
     ``,

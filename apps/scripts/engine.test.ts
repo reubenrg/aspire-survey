@@ -10,6 +10,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildRow, columnsFor, defaultColumn } from '../Aspire-Survey/src/engine/definition.ts';
 import { generateCreateTableSql } from '../Aspire-Survey/src/engine/generateSql.ts';
+import { migrationForNewColumns, validateAdditive } from '../Aspire-Survey/src/engine/additive.ts';
 import { demoSurvey } from '../Aspire-Survey/src/surveys/demo.ts';
 import type { SurveyDefinition } from '../Aspire-Survey/src/engine/types.ts';
 
@@ -111,4 +112,105 @@ test('Other free text is dropped when Other is not chosen', () => {
 
   const notChosen = buildRow(demoSurvey, { factors: ['Formal training'], factors__other: 'stale' });
   assert.equal(notChosen.q_factors_other, null);
+});
+
+// ── Sprint 3: additive-only guard ──────────────────────────────────────────
+
+const withResponses = true;
+
+function edit(fn: (d: SurveyDefinition) => SurveyDefinition): SurveyDefinition {
+  return fn(JSON.parse(JSON.stringify(demoSurvey)) as SurveyDefinition);
+}
+
+test('no responses yet means anything may change', () => {
+  const gutted = edit(d => ({ ...d, sections: [d.sections[0]] }));
+  assert.equal(validateAdditive(demoSurvey, gutted, false).length, 0);
+});
+
+test('adding a question is always allowed', () => {
+  const added = edit(d => {
+    d.sections[0].questions.push({ id: 'newOne', type: 'text', label: 'Added later' });
+    return d;
+  });
+  assert.equal(validateAdditive(demoSurvey, added, withResponses).length, 0);
+});
+
+test('deleting a question with stored answers is blocked', () => {
+  const removed = edit(d => {
+    d.sections[2].questions = d.sections[2].questions.filter(q => q.id !== 'oneThing');
+    return d;
+  });
+  const errs = validateAdditive(demoSurvey, removed, withResponses).filter(i => i.severity === 'error');
+  assert.equal(errs.length, 1);
+  assert.match(errs[0].message, /was removed/);
+});
+
+test('reordering matrix rows is blocked, and says which column would be reinterpreted', () => {
+  const swapped = edit(d => {
+    const m = d.sections[1].questions[0] as { rows: string[] };
+    [m.rows[0], m.rows[1]] = [m.rows[1], m.rows[0]];
+    return d;
+  });
+  const errs = validateAdditive(demoSurvey, swapped, withResponses).filter(i => i.severity === 'error');
+  assert.ok(errs.length >= 2, 'both moved rows should be reported');
+  assert.match(errs[0].message, /q_change_01/);
+  assert.match(errs[0].message, /moved from position 1 to 2/);
+});
+
+test('appending a matrix row is allowed', () => {
+  const appended = edit(d => {
+    (d.sections[1].questions[0] as { rows: string[] }).rows.push('A brand new statement');
+    return d;
+  });
+  assert.equal(validateAdditive(demoSurvey, appended, withResponses).filter(i => i.severity === 'error').length, 0);
+});
+
+test('changing a question type that changes column storage is blocked', () => {
+  const retyped = edit(d => {
+    const q = d.sections[2].questions.find(x => x.id === 'factors')!;
+    // checkbox (text[]) -> radio (text)
+    return { ...d, sections: d.sections.map(s => ({
+      ...s, questions: s.questions.map(x => x.id === 'factors'
+        ? { id: x.id, type: 'radio' as const, label: x.label, options: (q as { options: string[] }).options }
+        : x),
+    })) };
+  });
+  const errs = validateAdditive(demoSurvey, retyped, withResponses).filter(i => i.severity === 'error');
+  assert.ok(errs.some(e => /text\[\]/.test(e.message)));
+});
+
+test('renaming a question id is blocked because it moves the column', () => {
+  const renamed = edit(d => {
+    d.sections[2].questions[0].id = 'oneThingRenamed';
+    return d;
+  });
+  const errs = validateAdditive(demoSurvey, renamed, withResponses).filter(i => i.severity === 'error');
+  assert.ok(errs.some(e => /was removed/.test(e.message)));
+});
+
+test('dropping an option warns but does not block', () => {
+  const trimmed = edit(d => {
+    const q = d.sections[2].questions.find(x => x.id === 'factors') as { options: string[] };
+    q.options = q.options.filter(o => o !== 'Personal effort');
+    return d;
+  });
+  const issues = validateAdditive(demoSurvey, trimmed, withResponses);
+  assert.equal(issues.filter(i => i.severity === 'error').length, 0);
+  assert.equal(issues.filter(i => i.severity === 'warning').length, 1);
+});
+
+test('changing the identity question is blocked', () => {
+  const swappedId = edit(d => ({ ...d, uniqueBy: 'employeeName' }));
+  const errs = validateAdditive(demoSurvey, swappedId, withResponses).filter(i => i.severity === 'error');
+  assert.ok(errs.some(e => /unique constraint/.test(e.message)));
+});
+
+test('added questions produce ALTER statements for the missing columns', () => {
+  const added = edit(d => {
+    d.sections[0].questions.push({ id: 'shiftPattern', type: 'checkbox', label: 'Shifts', options: ['Day'] });
+    return d;
+  });
+  const sql = migrationForNewColumns(demoSurvey, added, 'survey_engine_demo');
+  assert.match(sql, /add column if not exists shift_pattern text\[\]/);
+  assert.doesNotMatch(sql, /employee_id/, 'existing columns must not be re-added');
 });

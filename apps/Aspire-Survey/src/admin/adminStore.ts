@@ -26,7 +26,15 @@ export interface SurveyRow {
   table_name: string;
   published: boolean;
   organization_id: string | null;
+  current_version: number;
   updated_at: string;
+}
+
+export interface SurveyVersion {
+  version_number: number;
+  definition: SurveyDefinition;
+  created_by: string | null;
+  created_at: string;
 }
 
 export interface OrganizationGroup {
@@ -35,7 +43,7 @@ export interface OrganizationGroup {
 }
 
 const SURVEY_COLUMNS =
-  'id, slug, title, definition, table_name, published, organization_id, updated_at';
+  'id, slug, title, definition, table_name, published, organization_id, current_version, updated_at';
 
 function fail(error: { code?: string; message: string }, action: string): never {
   if (error.code === '42501') {
@@ -144,11 +152,35 @@ export async function getSurvey(slug: string): Promise<SurveyRow | null> {
   return (data as SurveyRow) ?? null;
 }
 
+/**
+ * Save a survey, snapshotting the definition as a new version when it changed.
+ *
+ * The snapshot is written first. If it fails, nothing has moved; if the survey
+ * update then fails, there is a spare snapshot rather than a version number
+ * pointing at a definition nobody kept. Erring towards a harmless extra row is
+ * the right way round when the alternative is losing history.
+ */
 export async function saveSurvey(
   def: SurveyDefinition,
   published: boolean,
   organizationId: string | null,
-): Promise<void> {
+  options: { surveyId?: string; previous?: SurveyDefinition; currentVersion?: number } = {},
+): Promise<number> {
+  const changed =
+    options.previous === undefined ||
+    JSON.stringify(options.previous) !== JSON.stringify(def);
+  const version = changed ? (options.currentVersion ?? 0) + 1 : (options.currentVersion ?? 1);
+
+  if (changed && options.surveyId) {
+    const { error: vErr } = await supabase.from('survey_versions').insert({
+      survey_id: options.surveyId,
+      version_number: version,
+      definition: def,
+      created_by: (await supabase.auth.getUser()).data.user?.email ?? null,
+    });
+    if (vErr && vErr.code !== '23505') fail(vErr, 'record a new version of this survey');
+  }
+
   const { error } = await supabase.from('surveys').upsert(
     {
       slug: def.slug,
@@ -157,11 +189,23 @@ export async function saveSurvey(
       table_name: tableNameFor(def),
       published,
       organization_id: organizationId,
+      current_version: version,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'slug' },
   );
   if (error) fail(error, 'save surveys in this organization');
+  return version;
+}
+
+export async function listVersions(surveyId: string): Promise<SurveyVersion[]> {
+  const { data, error } = await supabase
+    .from('survey_versions')
+    .select('version_number, definition, created_by, created_at')
+    .eq('survey_id', surveyId)
+    .order('version_number', { ascending: false });
+  if (error) fail(error, 'view the version history');
+  return (data ?? []) as SurveyVersion[];
 }
 
 export async function deleteSurvey(slug: string): Promise<void> {
@@ -170,12 +214,15 @@ export async function deleteSurvey(slug: string): Promise<void> {
 }
 
 /**
- * How many responses a survey has. Null when the response table does not exist
- * yet, which is the normal state before its generated SQL has been run, or when
- * the role cannot read it.
+ * How many responses a survey has.
+ *
+ * Goes through a security definer function rather than a select, because
+ * response tables deliberately have no read policy. A count is not a response,
+ * so this is the one thing about collected answers a non-analyst may learn.
+ * Null means the survey has no table yet, or the caller has no role on it.
  */
-export async function countResponses(tableName: string): Promise<number | null> {
-  const { count, error } = await supabase.from(tableName).select('*', { count: 'exact', head: true });
+export async function countResponses(slug: string): Promise<number | null> {
+  const { data, error } = await supabase.rpc('survey_response_count', { p_slug: slug });
   if (error) return null;
-  return count ?? 0;
+  return data === null ? null : Number(data);
 }

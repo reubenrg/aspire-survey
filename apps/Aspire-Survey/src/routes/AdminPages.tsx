@@ -5,8 +5,8 @@ import { cn } from '../lib/utils';
 import SurveyEditor from '../admin/SurveyEditor';
 import { Alert, useAdminSession } from '../admin/AdminGate';
 import {
-  createOrganization, deleteSurvey, getSurvey, groupByOrganization, listOrganizations,
-  listSurveys, saveSurvey, slugify,
+  countResponses, createOrganization, deleteSurvey, getSurvey, groupByOrganization,
+  listOrganizations, listSurveys, saveSurvey, slugify,
   type Organization, type OrganizationGroup, type SurveyRow,
 } from '../admin/adminStore';
 import type { SurveyDefinition } from '../engine/types';
@@ -281,6 +281,10 @@ export function AdminEditor() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  // The definition responses were collected under. Compared against edits so a
+  // change that would strand stored answers is caught before it is saved.
+  const [baseline, setBaseline] = useState<SurveyDefinition | null>(null);
+  const [responseCount, setResponseCount] = useState<number | null>(null);
 
   useEffect(() => {
     getSurvey(slug)
@@ -288,8 +292,10 @@ export function AdminEditor() {
         if (!found) { setError(`No survey called "${slug}".`); return; }
         setRow(found);
         setDef(found.definition);
+        setBaseline(found.definition);
         setPublished(found.published);
         if (found.organization_id) await session.refreshRole(found.organization_id);
+        setResponseCount(await countResponses(found.slug));
       })
       .catch(e => setError(e.message));
   }, [slug, session]);
@@ -300,7 +306,15 @@ export function AdminEditor() {
     if (!def) return;
     setSaving(true); setError(null);
     try {
-      await saveSurvey(def, published, row?.organization_id ?? null);
+      const version = await saveSurvey(def, published, row?.organization_id ?? null, {
+        surveyId: row?.id,
+        previous: baseline ?? undefined,
+        currentVersion: row?.current_version,
+      });
+      // The saved definition becomes the new baseline, so the guard measures
+      // the next edit against what is actually stored rather than the original.
+      setBaseline(def);
+      setRow(r => (r ? { ...r, current_version: version, definition: def } : r));
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
@@ -342,6 +356,9 @@ export function AdminEditor() {
         published={published}
         saving={saving}
         readOnly={!canEdit}
+        baseline={baseline ?? undefined}
+        responseCount={responseCount}
+        currentVersion={row?.current_version}
         onChange={setDef}
         onPublishedChange={setPublished}
         onSave={save}
