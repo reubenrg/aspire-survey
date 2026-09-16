@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import { slugify, type Organization } from './adminStore';
 import type { PrivacyMode, SurveyStatus } from './labels';
 import { recordAudit } from './reportStore';
+import { isValidHexColor, isValidLogoUrl } from './brandingValidation';
 
 export type { SurveyStatus };
 
@@ -106,6 +107,12 @@ export async function createCustomer(input: {
   const name = input.name.trim();
   const slug = slugify(name);
   if (!slug) throw new Error('Give the customer a name using letters or numbers.');
+  if (input.brandColor && !isValidHexColor(input.brandColor)) {
+    throw new Error('Brand colour must be a hex colour like #2961B6.');
+  }
+  if (input.logoUrl && !isValidLogoUrl(input.logoUrl)) {
+    throw new Error('Logo URL must be a valid http:// or https:// address.');
+  }
 
   const { data, error } = await supabase
     .from('organizations')
@@ -124,6 +131,12 @@ export async function createCustomer(input: {
 export async function updateCustomer(id: string, patch: Partial<{
   name: string; brand_color: string | null; logo_url: string | null; is_active: boolean;
 }>): Promise<void> {
+  if (patch.brand_color && !isValidHexColor(patch.brand_color)) {
+    throw new Error('Brand colour must be a hex colour like #2961B6.');
+  }
+  if (patch.logo_url && !isValidLogoUrl(patch.logo_url)) {
+    throw new Error('Logo URL must be a valid http:// or https:// address.');
+  }
   const { error } = await supabase
     .from('organizations')
     .update({ ...patch, updated_at: new Date().toISOString() })

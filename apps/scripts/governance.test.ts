@@ -21,6 +21,7 @@ import { validateConfidentialityThreshold } from '../Aspire-Survey/src/admin/thr
 import { matchesLibrarySearch, matchesTemplateSearch } from '../Aspire-Survey/src/admin/libraryFilters.ts';
 import { duplicateTitle, duplicateSlug } from '../Aspire-Survey/src/admin/duplication.ts';
 import { atLeast, type Role } from '../Aspire-Survey/src/admin/labels.ts';
+import { isValidHexColor, isValidLogoUrl, contrastRatio, hasSufficientContrast } from '../Aspire-Survey/src/admin/brandingValidation.ts';
 import type { Question } from '../Aspire-Survey/src/engine/types';
 
 // ── Confidentiality threshold setting (Part 20) ──────────────────────────
@@ -100,4 +101,33 @@ test('analyst cannot meet the owner minimum — the exact boundary add_team_memb
   assert.equal(atLeast('analyst', 'owner'), false);
   assert.equal(atLeast('editor', 'owner'), false);
   assert.equal(atLeast('owner', 'owner'), true);
+});
+
+// ── Customer branding validation (Part 12) ────────────────────────────────
+
+test('a hex colour must be a full 6-digit #rrggbb — a native <input type=color> always produces one, but the paired text field does not', () => {
+  assert.equal(isValidHexColor('#2961B6'), true);
+  assert.equal(isValidHexColor('#fff'), false);
+  assert.equal(isValidHexColor('2961B6'), false);
+  assert.equal(isValidHexColor('not a colour'), false);
+  assert.equal(isValidHexColor('javascript:alert(1)'), false);
+});
+
+test('a logo URL must be http(s) — an empty value is allowed since the logo is optional, but a non-http scheme is not', () => {
+  assert.equal(isValidLogoUrl(''), true);
+  assert.equal(isValidLogoUrl('https://example.com/logo.png'), true);
+  assert.equal(isValidLogoUrl('http://example.com/logo.png'), true);
+  assert.equal(isValidLogoUrl('javascript:alert(1)'), false);
+  assert.equal(isValidLogoUrl('not a url'), false);
+  assert.equal(isValidLogoUrl('ftp://example.com/logo.png'), false);
+});
+
+test('contrast ratio is 21:1 for black on white and 1:1 for a colour against itself', () => {
+  assert.ok(Math.abs(contrastRatio('#000000', '#ffffff') - 21) < 0.01);
+  assert.ok(Math.abs(contrastRatio('#2961B6', '#2961B6') - 1) < 0.01);
+});
+
+test('a near-white brand colour fails the sufficient-contrast check against a white background, a strongly saturated one passes', () => {
+  assert.equal(hasSufficientContrast('#fefefe'), false);
+  assert.equal(hasSufficientContrast('#2961B6'), true);
 });

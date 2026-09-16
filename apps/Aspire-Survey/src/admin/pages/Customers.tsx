@@ -7,6 +7,7 @@ import {
   type Customer, type SurveySummary,
 } from '../platformStore';
 import { useAdminSession } from '../AdminGate';
+import { hasSufficientContrast, isValidHexColor } from '../brandingValidation';
 import {
   AccessDenied, DataTable, EmptyState, ErrorNote, PageHeader, SkeletonRows,
   StatusPill, Td, relativeTime,
@@ -196,11 +197,16 @@ function CustomerDialog({
 
           <Field label="Brand colour" hint="Used to identify the customer at a glance in lists.">
             <div className="flex items-center gap-2">
-              <input type="color" value={color} onChange={e => setColor(e.target.value)}
+              <input type="color" value={isValidHexColor(color) ? color : '#2961B6'} onChange={e => setColor(e.target.value)}
                      className="h-9 w-12 cursor-pointer rounded border border-border bg-background" />
               <input value={color} onChange={e => setColor(e.target.value)}
                      className={inputCls + ' font-mono text-xs'} />
             </div>
+            {isValidHexColor(color) && !hasSufficientContrast(color) && (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                This colour is very close to white and may be hard to see against a light background.
+              </p>
+            )}
           </Field>
 
           <Field label="Logo URL (optional)">
