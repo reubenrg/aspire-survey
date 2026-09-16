@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/button';
+import { AspireMark } from '../components/AspireMark';
 import { atLeast, fetchRole, type Role } from './adminStore';
 
 interface AdminSession {
@@ -114,6 +115,7 @@ function SignIn() {
   if (state === 'sent') {
     return (
       <Centered>
+        <AspireMark className="mx-auto mb-4 h-10 w-10 text-primary" />
         <h1 className="mb-2 font-display text-xl text-foreground">Check your email</h1>
         <p className="text-sm text-muted-foreground">
           A sign-in link is on its way to <strong>{email}</strong>. Open it on this device. The link
@@ -125,6 +127,7 @@ function SignIn() {
 
   return (
     <Centered>
+      <AspireMark className="mx-auto mb-4 h-10 w-10 text-primary" />
       <h1 className="mb-2 font-display text-xl text-foreground">Survey Admin</h1>
       <p className="mb-6 text-sm text-muted-foreground">
         Sign in with your email. We send a one-time link, so there is no password to remember or leak.

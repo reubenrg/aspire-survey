@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 import { Button } from '../components/ui/button';
+import { AspireMark } from '../components/AspireMark';
 import { useAdminSession } from './AdminGate';
 import { RolePill } from './ui';
 
@@ -42,10 +43,9 @@ export default function AdminShell() {
         'sticky top-0 flex h-screen shrink-0 flex-col border-r border-border bg-background transition-[width] duration-200',
         collapsed ? 'w-14' : 'w-56',
       )}>
-        <div className={cn('flex h-14 items-center border-b border-border', collapsed ? 'justify-center px-2' : 'px-4')}>
-          {collapsed ? (
-            <span className="font-display text-sm text-primary">A</span>
-          ) : (
+        <div className={cn('flex h-14 items-center gap-2 border-b border-border', collapsed ? 'justify-center px-2' : 'px-4')}>
+          <AspireMark className="h-6 w-6 shrink-0 text-primary" />
+          {!collapsed && (
             <div className="min-w-0">
               <p className="truncate font-display text-sm leading-tight text-foreground">Aspire Survey</p>
               <p className="truncate text-[10px] uppercase tracking-wider text-muted-foreground">Admin</p>
