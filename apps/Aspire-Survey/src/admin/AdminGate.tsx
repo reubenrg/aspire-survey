@@ -131,9 +131,10 @@ function SignIn() {
   // (request on a phone, enter on a desktop) and for anyone who finds clicking
   // a link in their mail client awkward - screen-reader users in particular,
   // since a short numeric field reads and fills far more predictably than a
-  // hidden magic-link href. Docs say email OTP is fixed at 6 digits, but this
-  // project has been observed issuing longer codes, so the field accepts up
-  // to 10 digits rather than assert a specific length.
+  // hidden magic-link href. Supabase's email OTP length is configurable
+  // between 6 and 10 digits, so the field enforces that range (a submit
+  // below 6 digits is disabled) without asserting an exact length anywhere
+  // in the copy.
   const verify = async (e: React.FormEvent) => {
     e.preventDefault();
     setCodeError(null);
@@ -166,7 +167,7 @@ function SignIn() {
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-center text-lg tracking-[0.3em] outline-none focus:border-primary/60 focus:ring-2 focus:ring-ring/30"
           />
           {codeError && <p className="text-xs text-destructive">{codeError}</p>}
-          <Button type="submit" className="w-full" disabled={verifying || code.length < 4}>
+          <Button type="submit" className="w-full" disabled={verifying || code.length < 6}>
             {verifying ? 'Verifying…' : 'Verify code'}
           </Button>
         </form>
