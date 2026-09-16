@@ -1,0 +1,75 @@
+# Aspire Survey — Technical Runbook
+
+Engineering reference. No secret values appear in this document — environment variables are listed by name only.
+
+## Repository & branches
+
+- Repo: `reubenrg/aspire-survey` (GitHub)
+- `main` — **frozen legacy S2M branch.** This is the code behind the existing production deployment at `s2m-aspire-survey.vercel.app`. Do not merge Admin V2 work into it. Do not push to it except for genuine S2M-specific fixes, with explicit sign-off.
+- `admin-platform-v2` — active development branch for the Admin V2 platform (everything built in Sprints 1–6: customers, employees, surveys, builder, response centre, analytics, question library, templates, team/RBAC, activity, settings). This is what the new Admin deployment builds from.
+- Project root for the Admin V2 app is `apps/` (not `apps/Aspire-Survey/` — that subdirectory holds only `src/` and `public/`; `package.json`, `vite.config.ts`, `tsconfig*.json`, `vercel.json` all live at `apps/`).
+
+## Supabase project
+
+- Project ref: `zpefurbbejsarkcgmscg` (name "Custom_Survey", region `ap-southeast-2`, Postgres 17)
+- This single project serves **both** the legacy S2M schema/tables and the new Admin V2 schema — they coexist in one database. S2M's own response tables and questions must never be altered by Admin V2 work (see Security boundaries).
+- Migrations are tracked internally by Supabase in `supabase_migrations.schema_migrations` — 28 ordered migrations as of this sprint, all forward-only, no destructive drops.
+
+**Known drift:** the SQL files committed under `apps/supabase/*.sql` (`COMPLETE_SETUP.sql`, `sprint_1_2_orgs_rbac.sql`, etc.) predate Sprint 4/5 and do **not** reflect the current schema — Sprint 5's `question_library`/`survey_templates`/`platform_settings` tables, for example, exist live but not in any committed file. The live database's own migration history (inside Supabase) is the actual source of truth; the repo's SQL snapshot is stale. Recommended fix (post-V1, not a functional risk today): adopt the standard `supabase/migrations/<timestamp>_<name>.sql` convention going forward and periodically export/commit the current schema.
+
+## Vercel projects
+
+- **S2M production** (`s2m-aspire-survey.vercel.app`) — the frozen legacy deployment. Not visible under the Vercel team/account this session's tooling has access to; treat it as fully out of reach and out of scope.
+- **`aspire-survey`** (`aspire-survey-reuben10.vercel.app`, project id `prj_2tGmA2P1ozSiE7lON40IA2SpUNAx`) — a stray, unlinked, failed (`readyState: ERROR`) prior deployment attempt. Not S2M, not the current Admin app. Leave alone unless someone specifically investigates and decides to reuse or delete it.
+- **`aspire-survey-admin`** — the intended production home for Admin V2, per Sprint 6's architecture decision. Not yet created as of this sprint — the Vercel↔GitHub App integration currently lacks write access to the repo (`repo_no_access` on project creation). See "Deployment procedure" below for the exact unblock.
+
+## Environment variables (names only)
+
+Required for the Admin V2 build (`apps/vite.config.ts` fails the build loudly if either is missing):
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+Both are intentionally public — they're baked into the client bundle by design (the anon key is a publishable key; all real access control is enforced by Postgres RLS, not by keeping this key secret). Set them locally in `apps/.env.local` (gitignored) or in the Vercel project's Settings → Environment Variables for deployments. Never commit a `.env` file with real values.
+
+Never required in the frontend and never to be set as a `VITE_`-prefixed variable: the Supabase **service role** key, SMTP/email-provider credentials, or any other server-side secret. None currently appear anywhere in the client bundle (verified by scanning the built JS this sprint).
+
+## Deployment procedure
+
+1. Confirm `admin-platform-v2` is the branch you intend to ship, and that `main` is untouched (`git rev-parse main` should equal the frozen S2M SHA before and after any work).
+2. **One-time unblock needed:** grant the Vercel GitHub App access to the `aspire-survey` repository (GitHub → Settings → Installations → Vercel → Repository access → add `aspire-survey`), or re-authorize from Vercel's own Settings → Git. Without this, Vercel's API rejects project creation with `repo_no_access`.
+3. Once access is granted, create the `aspire-survey-admin` project linked to `reubenrg/aspire-survey`, **root directory `apps`**.
+4. In the new project's Settings, confirm/set the **Production Branch** to `admin-platform-v2` — do not leave it on the repo's default (`main`), or production deploys will build the wrong (legacy) code.
+5. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` under Settings → Environment Variables (Production + Preview).
+6. Trigger a deploy. Build command `npm run build`, output directory `Aspire-Survey/dist` (already set in the repo's `apps/vercel.json`).
+7. Verify: the deployed app's sign-in page loads, and an authenticated Owner session reaches the dashboard with all Sprint 1–6 screens present.
+
+## Migration procedure
+
+- Author changes via the Supabase migration tool (`apply_migration`) against project `zpefurbbejsarkcgmscg` — never hand-edit schema through the dashboard's SQL editor for anything meant to persist, so it stays tracked in `schema_migrations`.
+- Every new table gets RLS enabled explicitly (this project has RLS auto-enabled with **no default policies** on creation — an un-policied table is invisible to everyone except the table owner, which is a safe default but easy to mistake for "it's working" during testing when it's actually just inaccessible to all roles).
+- Grant only what's needed, explicitly, to `authenticated` (rarely to `anon` — only for the specific public columns the respondent-facing flow needs, e.g. `surveys.definition`/`slug`/`title`/`table_name`/`published`/`current_version`; never `draft_definition` or anything org-identifying).
+- A multi-statement migration is atomic — if any statement fails, **everything** in that same `apply_migration` call rolls back, including earlier-defined functions/columns in the same call. After any failure, re-verify what actually landed (`pg_proc`, `information_schema.columns`) rather than assuming a partial success.
+- pgcrypto lives in the `extensions` schema on this project — always schema-qualify (`extensions.gen_random_bytes`, `extensions.digest`).
+
+## Rollback procedure
+
+- **Vercel:** every deployment is immutable and independently addressable; promote any prior successful deployment back to production from the project's Deployments list (or via the `get_deployment`/promotion flow) without a new build. No destructive action needed — a rollback is just re-pointing production traffic at an earlier deployment.
+- **Database:** this project has no destructive migrations to roll back (all 28 are additive/corrective). If a future migration needs reversing, write a new forward migration that undoes it — do not attempt to edit migration history after the fact.
+- **Full restore:** see Backup/Recovery below.
+
+## Common failure scenarios
+
+| Symptom | Likely cause | Check |
+|---|---|---|
+| Build fails with "Missing required environment variable(s)" | `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` not set for this environment | Vercel project → Environment Variables |
+| A new table's data is invisible to everyone, even the owner | RLS auto-enabled with no policy yet | Add explicit `SELECT`/`INSERT`/`UPDATE` policies calling `has_survey_role`/`is_survey_member` |
+| A PL/pgSQL migration throws a syntax error | Often a malformed `case when … then … else … end` or a bare ternary | Fix and re-apply the **whole** migration; verify nothing partial landed |
+| Respondent page can't load a published survey as an anonymous visitor | Anon grant regressed on `surveys` columns, or the survey isn't `published = true` | Check `information_schema.column_privileges` for `anon` on `surveys` |
+| "Ambiguous column" error from a function referencing a table with a same-named parameter | Missing `#variable_conflict use_variable`/`use_column` | Add the pragma to the function |
+
+## Security boundaries
+
+- RLS is the actual access-control boundary everywhere — the UI is convenience, not security. Every sensitive table has been proven this sprint to deny `anon` outright (no table-level grant) and to deny cross-workspace/analyst/self-escalation access via live proofs against synthetic data (see Sprint 5/6 session records).
+- `security definer` functions (`has_survey_role`, `is_survey_member`, `get_user_role`, all team-management and analytics functions) are the only path to privileged reads/writes — always `set search_path = public` on these to avoid search-path hijacking.
+- The confidentiality threshold has a hard floor of 5 enforced *inside* `survey_segment_summary()` itself (`greatest(coalesce(p_threshold, 5), 5)`), not just in the UI — a caller cannot request below it via direct RPC call either.
+- S2M's schema/tables/questions/response data are explicitly out of scope for any Admin V2 change. If a future migration might touch anything S2M owns, stop and confirm scope before applying it.
