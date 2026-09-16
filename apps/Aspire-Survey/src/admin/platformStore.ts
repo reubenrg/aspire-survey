@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { slugify, type Organization } from './adminStore';
 import type { PrivacyMode, SurveyStatus } from './labels';
+import { recordAudit } from './reportStore';
 
 export type { SurveyStatus };
 
@@ -128,6 +129,9 @@ export async function updateCustomer(id: string, patch: Partial<{
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq('id', id);
   if (error) throw translate(error, 'update this customer');
+  if ('brand_color' in patch || 'logo_url' in patch) {
+    await recordAudit(id, 'CUSTOMER_BRANDING_CHANGED', { customer_id: id });
+  }
 }
 
 /**
