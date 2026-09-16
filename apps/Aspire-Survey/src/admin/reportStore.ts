@@ -95,6 +95,41 @@ export async function fetchAuditLog(organizationId: string | null, limit = 100):
   return (data ?? []) as AuditEntry[];
 }
 
+export interface AuditFilters {
+  organizationId?: string;
+  userEmail?: string;
+  actionType?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+/**
+ * Real database paging (Part 16) for the Activity screen: never fetches the
+ * whole table, and the same owner-only RLS as fetchAuditLog decides what a
+ * given caller can even see, so a workspace-scoped owner naturally gets
+ * only their own organization's rows.
+ */
+export async function fetchAuditPage(
+  filters: AuditFilters, limit: number, offset: number,
+): Promise<{ rows: AuditEntry[]; total: number }> {
+  let q = supabase
+    .from('audit_logs')
+    .select('id, user_email, action_type, details, created_at', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+  if (filters.organizationId) q = q.eq('organization_id', filters.organizationId);
+  if (filters.userEmail) q = q.ilike('user_email', `%${filters.userEmail}%`);
+  if (filters.actionType) q = q.eq('action_type', filters.actionType);
+  if (filters.dateFrom) q = q.gte('created_at', filters.dateFrom);
+  if (filters.dateTo) q = q.lte('created_at', filters.dateTo);
+  const { data, error, count } = await q;
+  if (error) {
+    if (error.code === '42501') throw new Error('Only an owner can read the audit log.');
+    throw new Error(error.message);
+  }
+  return { rows: (data ?? []) as AuditEntry[], total: count ?? 0 };
+}
+
 function csvCell(value: unknown): string {
   if (value === null || value === undefined) return '';
   const s = Array.isArray(value) ? value.join('; ') : String(value);

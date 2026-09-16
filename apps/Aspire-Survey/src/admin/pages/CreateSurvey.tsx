@@ -1,17 +1,19 @@
-import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { cn } from '../../lib/utils';
 import { useAdminSession } from '../AdminGate';
 import {
-  SURVEY_CATEGORIES, createSurveyDraft, slugify, type Organization,
+  SURVEY_CATEGORIES, createSurveyDraft, listSurveys, slugify, type Organization, type SurveyRow,
 } from '../adminStore';
+import { fetchTemplates, createSurveyFromTemplate, type SurveyTemplate } from '../templateStore';
 import { useOrganizations } from '../useOrganizations';
 import { PRIVACY_MODE_DESCRIPTION, PRIVACY_MODE_LABEL, type PrivacyMode } from '../labels';
 import { ErrorNote, PageHeader, SearchInput } from '../ui';
 import type { SurveyDefinition } from '../../engine/types';
 
-const STEPS = ['Customer', 'Basics', 'Privacy mode'] as const;
+type StartingPoint = 'blank' | 'template' | 'duplicate';
+const STEPS = ['Starting point', 'Customer', 'Basics', 'Privacy mode'] as const;
 
 function blankDefinition(title: string): SurveyDefinition {
   return {
@@ -28,11 +30,25 @@ function blankDefinition(title: string): SurveyDefinition {
   };
 }
 
+/**
+ * Part 8: three starting points, one shared Customer/Basics/Privacy flow
+ * after that so template and duplicate surveys get the same deliberate
+ * privacy-mode step a blank one does - a template's suggested privacy mode
+ * pre-fills the choice, it does not skip it. Nothing here creates an
+ * audience or invitations; that stays a separate, later step either way.
+ */
 export default function CreateSurvey() {
   const session = useAdminSession();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const { organizations, loading: orgsLoading, error: orgsError } = useOrganizations();
   const [step, setStep] = useState(0);
+
+  const [startingPoint, setStartingPoint] = useState<StartingPoint>((params.get('start') as StartingPoint) || 'blank');
+  const [templates, setTemplates] = useState<SurveyTemplate[] | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<SurveyTemplate | null>(null);
+  const [existingSurveys, setExistingSurveys] = useState<SurveyRow[] | null>(null);
+  const [selectedExisting, setSelectedExisting] = useState<SurveyRow | null>(null);
 
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
@@ -45,28 +61,77 @@ export default function CreateSurvey() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (startingPoint !== 'template' || templates !== null) return;
+    void fetchTemplates(true).then(all => {
+      setTemplates(all);
+      const wanted = params.get('template');
+      if (wanted) {
+        const found = all.find(t => t.id === wanted);
+        if (found) applyTemplate(found);
+      }
+    }).catch(e => setError(e instanceof Error ? e.message : String(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startingPoint]);
+
+  useEffect(() => {
+    if (startingPoint !== 'duplicate' || existingSurveys !== null) return;
+    void listSurveys().then(setExistingSurveys).catch(e => setError(e instanceof Error ? e.message : String(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startingPoint]);
+
+  const applyTemplate = (t: SurveyTemplate) => {
+    setSelectedTemplate(t);
+    setTitle(t.name);
+    setCategory(SURVEY_CATEGORIES.includes(t.category as typeof SURVEY_CATEGORIES[number]) ? (t.category as string) : '');
+    setPrivacyMode(t.default_privacy_mode);
+  };
+
+  const applyExisting = (s: SurveyRow) => {
+    setSelectedExisting(s);
+    setTitle(`${s.title} (copy)`);
+    setOrganizationId(s.organization_id);
+    setCategory(s.category ?? '');
+    setPurpose(s.purpose ?? '');
+    setPrivacyMode(s.privacy_mode);
+  };
+
   // Only workspaces this person can actually create a survey in.
   const eligible = useMemo(
     () => organizations.filter(o => session.can(o.id, 'editor')),
     [organizations, session],
   );
+  const duplicatable = useMemo(
+    () => (existingSurveys ?? []).filter(s => session.can(s.organization_id, 'editor')),
+    [existingSurveys, session],
+  );
 
   const selectedOrg = eligible.find(o => o.id === organizationId) ?? null;
   const effectiveCategory = category === 'Custom' ? customCategory.trim() : category;
 
-  const canProceedStep0 = organizationId !== null;
-  const canProceedStep1 = title.trim().length > 0 && (category !== 'Custom' || customCategory.trim().length > 0);
+  const canProceedStep0 = startingPoint === 'blank' || (startingPoint === 'template' && selectedTemplate !== null) || (startingPoint === 'duplicate' && selectedExisting !== null);
+  const canProceedStep1 = organizationId !== null;
+  const canProceedStep2 = title.trim().length > 0 && (category !== 'Custom' || customCategory.trim().length > 0);
   const canSubmit = privacyMode !== null && (privacyMode !== 'CONFIDENTIAL' || ack);
 
   const create = async () => {
     if (!organizationId || !privacyMode) return;
     setBusy(true); setError(null);
     try {
-      const definition = blankDefinition(title.trim());
-      const row = await createSurveyDraft({
-        definition, organizationId, privacyMode,
-        category: effectiveCategory, purpose: purpose.trim(),
-      });
+      let row;
+      if (startingPoint === 'template' && selectedTemplate) {
+        row = await createSurveyFromTemplate(selectedTemplate, {
+          organizationId, title: title.trim(), privacyMode, category: effectiveCategory, purpose: purpose.trim(),
+        });
+      } else if (startingPoint === 'duplicate' && selectedExisting) {
+        const t = title.trim();
+        let slug = slugify(t) || `${selectedExisting.slug}-copy`;
+        const definition: SurveyDefinition = { ...selectedExisting.definition, slug, title: t };
+        row = await createSurveyDraft({ definition, organizationId, privacyMode, category: effectiveCategory, purpose: purpose.trim() });
+      } else {
+        const definition = blankDefinition(title.trim());
+        row = await createSurveyDraft({ definition, organizationId, privacyMode, category: effectiveCategory, purpose: purpose.trim() });
+      }
       navigate(`/admin/surveys/${row.slug}/builder`);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -78,7 +143,7 @@ export default function CreateSurvey() {
     <div className="mx-auto max-w-2xl">
       <PageHeader title="New survey" subtitle="A short, guided setup. Questions come next, once this is created." />
 
-      <ol className="mb-6 flex items-center gap-2 text-xs">
+      <ol className="mb-6 flex flex-wrap items-center gap-2 text-xs">
         {STEPS.map((label, i) => (
           <li key={label} className="flex items-center gap-2">
             <span className={cn(
@@ -98,13 +163,23 @@ export default function CreateSurvey() {
       {orgsError && <ErrorNote>{orgsError}</ErrorNote>}
 
       {step === 0 && (
+        <StartingPointStep
+          value={startingPoint}
+          onChange={sp => { setStartingPoint(sp); setSelectedTemplate(null); setSelectedExisting(null); }}
+          templates={templates} onPickTemplate={applyTemplate} selectedTemplate={selectedTemplate}
+          existingSurveys={duplicatable} onPickExisting={applyExisting} selectedExisting={selectedExisting}
+        />
+      )}
+
+      {step === 1 && (
         <CustomerStep
-          organizations={eligible} loading={orgsLoading}
+          organizations={startingPoint === 'duplicate' && selectedExisting ? eligible.filter(o => o.id === selectedExisting.organization_id) : eligible}
+          loading={orgsLoading}
           selectedId={organizationId} onSelect={setOrganizationId}
         />
       )}
 
-      {step === 1 && selectedOrg && (
+      {step === 2 && selectedOrg && (
         <BasicsStep
           organization={selectedOrg}
           title={title} onTitle={setTitle}
@@ -114,7 +189,7 @@ export default function CreateSurvey() {
         />
       )}
 
-      {step === 2 && (
+      {step === 3 && (
         <PrivacyStep mode={privacyMode} onMode={m => { setPrivacyMode(m); setAck(false); }} ack={ack} onAck={setAck} />
       )}
 
@@ -124,10 +199,10 @@ export default function CreateSurvey() {
         ) : (
           <Button type="button" variant="ghost" onClick={() => setStep(s => s - 1)}>Back</Button>
         )}
-        {step < 2 ? (
+        {step < 3 ? (
           <Button
             type="button"
-            disabled={step === 0 ? !canProceedStep0 : !canProceedStep1}
+            disabled={step === 0 ? !canProceedStep0 : step === 1 ? !canProceedStep1 : !canProceedStep2}
             onClick={() => setStep(s => s + 1)}
           >
             Continue
@@ -138,6 +213,77 @@ export default function CreateSurvey() {
           </Button>
         )}
       </div>
+    </div>
+  );
+}
+
+function StartingPointStep({
+  value, onChange, templates, onPickTemplate, selectedTemplate, existingSurveys, onPickExisting, selectedExisting,
+}: {
+  value: StartingPoint; onChange: (v: StartingPoint) => void;
+  templates: SurveyTemplate[] | null; onPickTemplate: (t: SurveyTemplate) => void; selectedTemplate: SurveyTemplate | null;
+  existingSurveys: SurveyRow[]; onPickExisting: (s: SurveyRow) => void; selectedExisting: SurveyRow | null;
+}) {
+  return (
+    <div>
+      <h2 className="mb-1 text-sm font-medium text-foreground">How do you want to start?</h2>
+      <p className="mb-4 text-sm text-muted-foreground">You can add, remove or rewrite every question afterward, whichever you pick.</p>
+
+      <div className="grid gap-2 sm:grid-cols-3">
+        {(['blank', 'template', 'duplicate'] as StartingPoint[]).map(sp => (
+          <button
+            key={sp} type="button" onClick={() => onChange(sp)}
+            className={cn('rounded-lg border p-3 text-left transition-colors', value === sp ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40')}
+          >
+            <span className="block text-sm font-medium text-foreground">{sp === 'blank' ? 'Blank' : sp === 'template' ? 'Template' : 'Duplicate existing survey'}</span>
+            <span className="block text-xs text-muted-foreground">
+              {sp === 'blank' ? 'Start from an empty survey.' : sp === 'template' ? 'Start from a reusable structure.' : 'Copy the structure of a survey you already have.'}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {value === 'template' && (
+        <div className="mt-4">
+          {templates === null ? <p className="text-sm text-muted-foreground">Loading templates…</p> : templates.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+              No templates yet. Save one from an existing survey's Builder first.
+            </p>
+          ) : (
+            <div className="grid max-h-72 gap-2 overflow-y-auto sm:grid-cols-2">
+              {templates.map(t => (
+                <button key={t.id} type="button" onClick={() => onPickTemplate(t)}
+                        className={cn('rounded-lg border p-3 text-left transition-colors', selectedTemplate?.id === t.id ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40')}>
+                  <span className="block text-sm font-medium text-foreground">{t.name}</span>
+                  <span className="block text-xs text-muted-foreground">{t.definition.sections.length} sections · {t.definition.sections.reduce((n, s) => n + s.questions.length, 0)} questions</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {selectedTemplate && (
+            <div className="mt-3 rounded-md border border-border bg-muted/30 p-3">
+              <p className="mb-1.5 text-xs font-medium text-foreground">Preview — {selectedTemplate.name}</p>
+              <ul className="space-y-0.5">
+                {selectedTemplate.definition.sections.map(s => <li key={s.id} className="text-xs text-muted-foreground">• {s.title} ({s.questions.length} question{s.questions.length === 1 ? '' : 's'})</li>)}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {value === 'duplicate' && (
+        <div className="mt-4">
+          {existingSurveys.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">No surveys available to duplicate yet.</p>
+          ) : (
+            <select value={selectedExisting?.slug ?? ''} onChange={e => { const s = existingSurveys.find(x => x.slug === e.target.value); if (s) onPickExisting(s); }}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/60">
+              <option value="">Choose a survey…</option>
+              {existingSurveys.map(s => <option key={s.slug} value={s.slug}>{s.title}</option>)}
+            </select>
+          )}
+        </div>
+      )}
     </div>
   );
 }

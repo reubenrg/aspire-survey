@@ -4,6 +4,8 @@ import { Button } from '../../components/ui/button';
 import type { Question, QuestionType } from '../../engine/types';
 import { defaultColumn } from '../../engine/definition';
 import { QUESTION_TYPE_LABELS, convertQuestion } from '../../engine/questionFactory';
+import { saveQuestionToLibrary } from '../libraryStore';
+import { LIBRARY_CATEGORIES } from '../pages/QuestionLibrary';
 import ConditionEditor from './ConditionEditor';
 
 interface Props {
@@ -11,6 +13,7 @@ interface Props {
   earlier: Question[];
   readOnly: boolean;
   hasResponses: boolean;
+  organizationId: string | null;
   onChange: (q: Question) => void;
   onDelete: () => void;
 }
@@ -22,8 +25,9 @@ interface Props {
  * and collapsed by default, for the rare person who wants to see the exact
  * shape being saved.
  */
-export default function PropertiesPanel({ question: q, earlier, readOnly, hasResponses, onChange, onDelete }: Props) {
+export default function PropertiesPanel({ question: q, earlier, readOnly, hasResponses, organizationId, onChange, onDelete }: Props) {
   const set = (patch: Partial<Question>) => onChange({ ...q, ...patch } as Question);
+  const [savingToLibrary, setSavingToLibrary] = useState(false);
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
@@ -130,11 +134,91 @@ export default function PropertiesPanel({ question: q, earlier, readOnly, hasRes
         <AdvancedInspector question={q} />
 
         {!readOnly && (
-          <div className="border-t border-border pt-3">
+          <div className="space-y-2 border-t border-border pt-3">
+            <Button variant="outline" size="sm" className="w-full" disabled={!q.label.trim()} onClick={() => setSavingToLibrary(true)}>
+              Save to Question Library
+            </Button>
             <Button variant="ghost" size="sm" onClick={onDelete} className="text-destructive hover:text-destructive">
               Delete question
             </Button>
           </div>
+        )}
+      </div>
+
+      {savingToLibrary && (
+        <SaveToLibraryDialog question={q} organizationId={organizationId} onClose={() => setSavingToLibrary(false)} />
+      )}
+    </div>
+  );
+}
+
+function SaveToLibraryDialog({
+  question, organizationId, onClose,
+}: { question: Question; organizationId: string | null; onClose: () => void }) {
+  const [category, setCategory] = useState(LIBRARY_CATEGORIES[0]);
+  const [tags, setTags] = useState('');
+  const [language, setLanguage] = useState('en');
+  const [scope, setScope] = useState<'shared' | 'workspace'>('shared');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const submit = async () => {
+    setBusy(true); setError(null);
+    try {
+      await saveQuestionToLibrary({
+        question, organizationId: scope === 'workspace' ? organizationId : null,
+        category, tags: tags.split(',').map(t => t.trim()).filter(Boolean), language,
+      });
+      setDone(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/30 px-6" role="dialog" aria-modal="true">
+      <div className="w-full max-w-sm rounded-lg border border-border bg-background p-5 shadow-lg">
+        <h2 className="mb-1 font-display text-lg text-foreground">Save to Question Library</h2>
+        {done ? (
+          <>
+            <p className="my-3 text-sm text-primary">Saved. This copy is independent — editing it later will never change this survey.</p>
+            <div className="flex justify-end"><Button onClick={onClose}>Done</Button></div>
+          </>
+        ) : (
+          <>
+            <p className="mb-3 line-clamp-2 text-sm text-muted-foreground">“{question.label}”</p>
+            {error && <p className="mb-2 text-xs text-destructive">{error}</p>}
+            <div className="space-y-3">
+              <label className="block text-xs font-medium text-foreground">Category
+                <select value={category} onChange={e => setCategory(e.target.value)} className={cn(inputCls, 'mt-1.5')}>
+                  {LIBRARY_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </label>
+              <label className="block text-xs font-medium text-foreground">Tags, comma separated
+                <input value={tags} onChange={e => setTags(e.target.value)} placeholder="pulse, quarterly" className={cn(inputCls, 'mt-1.5')} />
+              </label>
+              <label className="block text-xs font-medium text-foreground">Language
+                <select value={language} onChange={e => setLanguage(e.target.value)} className={cn(inputCls, 'mt-1.5')}>
+                  <option value="en">English</option><option value="ta">Tamil</option><option value="hi">Hindi</option>
+                </select>
+              </label>
+              {organizationId && (
+                <label className="block text-xs font-medium text-foreground">Visibility
+                  <select value={scope} onChange={e => setScope(e.target.value as 'shared' | 'workspace')} className={cn(inputCls, 'mt-1.5')}>
+                    <option value="shared">Shared library (any workspace)</option>
+                    <option value="workspace">This workspace only</option>
+                  </select>
+                </label>
+              )}
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+              <Button type="button" disabled={busy} onClick={submit}>{busy ? 'Saving…' : 'Save'}</Button>
+            </div>
+          </>
         )}
       </div>
     </div>

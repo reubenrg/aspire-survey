@@ -16,6 +16,11 @@ import ResponseCentre from './admin/pages/ResponseCentre';
 import SurveyAnalytics from './admin/pages/SurveyAnalytics';
 import ManagementReport from './admin/pages/ManagementReport';
 import CustomerEmployees from './admin/pages/CustomerEmployees';
+import QuestionLibrary from './admin/pages/QuestionLibrary';
+import Templates from './admin/pages/Templates';
+import Team from './admin/pages/Team';
+import Activity from './admin/pages/Activity';
+import Settings from './admin/pages/Settings';
 import { AdminEditor } from './routes/AdminPages';
 import ReportPage from './admin/ReportPage';
 
@@ -71,31 +76,11 @@ export default function AppRouter() {
               whereForNow="Per-survey analytics are available today from a survey's Results screen."
               to="/admin/surveys"
             />} />
-          <Route path="library" element={
-            <ComingSoon
-              title="Question Library"
-              summary="Reusable Aspire questions, categorised and tagged."
-              whereForNow="Questions are currently authored per survey in the builder."
-            />} />
-          <Route path="team" element={
-            <ComingSoon
-              title="Team"
-              summary="Who has access to which customer, and at what role."
-              whereForNow="Roles are enforced in the database and are managed there for now. The screen to manage them is not built."
-            />} />
-          <Route path="activity" element={
-            <ComingSoon
-              title="Activity"
-              summary="Audit trail of administrative actions."
-              whereForNow="Recent activity appears on the Overview, and the full log is on a survey's Results screen under Audit."
-              to="/admin"
-            />} />
-          <Route path="settings" element={
-            <ComingSoon
-              title="Settings"
-              summary="Workspace defaults, branding and data policy."
-              whereForNow="No settings are configurable from the admin yet."
-            />} />
+          <Route path="question-library" element={<QuestionLibrary />} />
+          <Route path="templates" element={<Templates />} />
+          <Route path="team" element={<Team />} />
+          <Route path="activity" element={<Activity />} />
+          <Route path="settings" element={<Settings />} />
 
           {/* Survey-scoped screens keep their existing paths so links still work. */}
           <Route path=":slug" element={<AdminEditor />} />

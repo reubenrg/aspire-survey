@@ -11,6 +11,8 @@ import {
 import { validateAdditive } from '../../engine/additive.ts';
 import { validateSurveyStructure, type BuilderIssue } from '../builderValidation';
 import { PRIVACY_MODE_LABEL, genericLinkWarning, usesInvitationLinks } from '../labels';
+import { createTemplate } from '../templateStore';
+import { LIBRARY_CATEGORIES } from './QuestionLibrary';
 import { ErrorNote, PrivacyModePill } from '../ui';
 import type { Question, Section, SurveyDefinition } from '../../engine/types';
 import StructurePanel, { type Selection } from '../builder/StructurePanel';
@@ -55,6 +57,7 @@ export default function SurveyBuilder() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishResult, setPublishResult] = useState<{ version: number } | null>(null);
 
@@ -220,6 +223,9 @@ export default function SurveyBuilder() {
           <Button variant="outline" size="sm" onClick={() => setVersionsOpen(true)}>History</Button>
           <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)}>Preview</Button>
           {!readOnly && (
+            <Button variant="outline" size="sm" onClick={() => setTemplateDialogOpen(true)}>Save as template</Button>
+          )}
+          {!readOnly && (
             <Button size="sm" onClick={() => setPublishOpen(true)}>Publish</Button>
           )}
           <Link to={`/admin/${survey.slug}`} className="ml-1 text-[11px] text-muted-foreground hover:text-foreground" title="The original question-by-question editor, including SQL and translations">
@@ -289,6 +295,7 @@ export default function SurveyBuilder() {
             <PropertiesPanel
               question={question} earlier={earlierQuestions} readOnly={readOnly}
               hasResponses={(responseCount ?? 0) > 0}
+              organizationId={survey.organization_id}
               onChange={nq => setDef({
                 ...def,
                 sections: def.sections.map((s, i) => (i === selection!.sectionIndex ? { ...s, questions: s.questions.map(q => (q.id === question.id ? nq : q)) } : s)),
@@ -327,6 +334,84 @@ export default function SurveyBuilder() {
           onClose={() => setPublishResult(null)}
         />
       )}
+
+      {templateDialogOpen && (
+        <SaveAsTemplateDialog survey={survey} definition={def} onClose={() => setTemplateDialogOpen(false)} />
+      )}
+    </div>
+  );
+}
+
+function SaveAsTemplateDialog({
+  survey, definition, onClose,
+}: { survey: BuilderSurvey; definition: SurveyDefinition; onClose: () => void }) {
+  const [name, setName] = useState(definition.title);
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState(LIBRARY_CATEGORIES[0]);
+  const [scope, setScope] = useState<'shared' | 'workspace'>('shared');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const submit = async () => {
+    if (!name.trim()) { setError('Give the template a name.'); return; }
+    setBusy(true); setError(null);
+    try {
+      await createTemplate({
+        organizationId: scope === 'workspace' ? survey.organization_id : null,
+        name: name.trim(), description: description.trim() || undefined, category,
+        definition: { ...definition, slug: 'template' }, // the slug is meaningless on a template; replaced when a survey is created from it
+        defaultPrivacyMode: survey.privacy_mode,
+      });
+      setDone(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/30 px-6" role="dialog" aria-modal="true">
+      <div className="w-full max-w-sm rounded-lg border border-border bg-background p-5 shadow-lg">
+        <h2 className="mb-1 font-display text-lg text-foreground">Save as template</h2>
+        {done ? (
+          <>
+            <p className="my-3 text-sm text-primary">Saved as a template. It's an independent copy — editing this survey later never changes it.</p>
+            <div className="flex justify-end"><Button onClick={onClose}>Done</Button></div>
+          </>
+        ) : (
+          <>
+            <p className="mb-3 text-sm text-muted-foreground">Copies the current draft's structure — sections, questions and logic. No responses, invitations or customer data.</p>
+            {error && <p className="mb-2 text-xs text-destructive">{error}</p>}
+            <div className="space-y-3">
+              <label className="block text-xs font-medium text-foreground">Name
+                <input value={name} onChange={e => setName(e.target.value)} className="mt-1.5 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/60" />
+              </label>
+              <label className="block text-xs font-medium text-foreground">Description (optional)
+                <textarea rows={2} value={description} onChange={e => setDescription(e.target.value)} className="mt-1.5 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/60" />
+              </label>
+              <label className="block text-xs font-medium text-foreground">Category
+                <select value={category} onChange={e => setCategory(e.target.value)} className="mt-1.5 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/60">
+                  {LIBRARY_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </label>
+              {survey.organization_id && (
+                <label className="block text-xs font-medium text-foreground">Visibility
+                  <select value={scope} onChange={e => setScope(e.target.value as 'shared' | 'workspace')} className="mt-1.5 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/60">
+                    <option value="shared">Shared library (any workspace)</option>
+                    <option value="workspace">This workspace only</option>
+                  </select>
+                </label>
+              )}
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+              <Button type="button" disabled={busy} onClick={submit}>{busy ? 'Saving…' : 'Save template'}</Button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
