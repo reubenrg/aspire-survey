@@ -250,12 +250,23 @@ function StartingPointStep({
               No templates yet. Save one from an existing survey's Builder first.
             </p>
           ) : (
-            <div className="grid max-h-72 gap-2 overflow-y-auto sm:grid-cols-2">
+            <div className="grid max-h-96 gap-2 overflow-y-auto sm:grid-cols-2">
               {templates.map(t => (
                 <button key={t.id} type="button" onClick={() => onPickTemplate(t)}
                         className={cn('rounded-lg border p-3 text-left transition-colors', selectedTemplate?.id === t.id ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40')}>
                   <span className="block text-sm font-medium text-foreground">{t.name}</span>
-                  <span className="block text-xs text-muted-foreground">{t.definition.sections.length} sections · {t.definition.sections.reduce((n, s) => n + s.questions.length, 0)} questions</span>
+                  {t.description && <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{t.description}</span>}
+                  <span className="mt-2 flex flex-wrap items-center gap-1.5">
+                    {t.category && (
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{t.category}</span>
+                    )}
+                    <span className="rounded bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-sky-700 dark:text-sky-400">
+                      {PRIVACY_MODE_LABEL[t.default_privacy_mode]}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {t.definition.sections.length} sections · {t.definition.sections.reduce((n, s) => n + s.questions.length, 0)} questions
+                    </span>
+                  </span>
                 </button>
               ))}
             </div>
