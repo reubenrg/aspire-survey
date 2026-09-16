@@ -152,12 +152,14 @@ function AddMemberDialog({
   const [orgId, setOrgId] = useState<string>(manageable[0]?.id ?? '');
   const [role, setRole] = useState<Role>('viewer');
   const [canViewIdentity, setCanViewIdentity] = useState(false);
+  const [confirmOwner, setConfirmOwner] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) { setError('An email address is required.'); return; }
+    if (role === 'owner' && !confirmOwner) { setError('Confirm that this person should have full Owner access before adding them.'); return; }
     setBusy(true); setError(null);
     try {
       await addMember(email.trim(), orgId || null, role, canViewIdentity);
@@ -188,10 +190,21 @@ function AddMemberDialog({
             </Field>
           )}
           <Field label="Role">
-            <select value={role} onChange={e => setRole(e.target.value as Role)} className={inputCls}>
+            <select value={role} onChange={e => { setRole(e.target.value as Role); setConfirmOwner(false); }} className={inputCls}>
               {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </Field>
+          {role === 'owner' && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-2.5 dark:border-amber-800 dark:bg-amber-950/40">
+              <p className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-400">
+                Owner can manage team membership, roles, and platform settings across every workspace this covers. Only grant it to someone who should have that level of control.
+              </p>
+              <label className="mt-2 flex items-start gap-2 text-[11px] font-medium text-amber-800 dark:text-amber-400">
+                <input type="checkbox" checked={confirmOwner} onChange={e => setConfirmOwner(e.target.checked)} className="mt-0.5 h-3.5 w-3.5 accent-amber-600" />
+                I understand this grants full Owner access.
+              </label>
+            </div>
+          )}
           <label className="flex items-start gap-2 text-xs text-foreground">
             <input type="checkbox" checked={canViewIdentity} onChange={e => setCanViewIdentity(e.target.checked)} className="mt-0.5 h-3.5 w-3.5 accent-primary" />
             Can view identified responses on Confidential surveys
@@ -201,7 +214,7 @@ function AddMemberDialog({
         {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
         <div className="mt-5 flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={busy}>{busy ? 'Adding…' : 'Add member'}</Button>
+          <Button type="submit" disabled={busy || (role === 'owner' && !confirmOwner)}>{busy ? 'Adding…' : 'Add member'}</Button>
         </div>
       </form>
     </div>
@@ -213,11 +226,14 @@ function EditMemberDialog({
 }: { member: TeamMember; onClose: () => void; onSaved: () => void }) {
   const [role, setRole] = useState<Role>(member.role);
   const [canViewIdentity, setCanViewIdentity] = useState(member.can_view_identity);
+  const [confirmOwner, setConfirmOwner] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const escalatingToOwner = role === 'owner' && member.role !== 'owner';
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (escalatingToOwner && !confirmOwner) { setError('Confirm that this person should have full Owner access before saving.'); return; }
     setBusy(true); setError(null);
     try {
       await updateMember(member.id, { role, canViewIdentity });
@@ -243,6 +259,17 @@ function EditMemberDialog({
               <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-500">This lowers their access.</p>
             )}
           </Field>
+          {escalatingToOwner && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-2.5 dark:border-amber-800 dark:bg-amber-950/40">
+              <p className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-400">
+                Owner can manage team membership, roles, and platform settings across every workspace this covers.
+              </p>
+              <label className="mt-2 flex items-start gap-2 text-[11px] font-medium text-amber-800 dark:text-amber-400">
+                <input type="checkbox" checked={confirmOwner} onChange={e => setConfirmOwner(e.target.checked)} className="mt-0.5 h-3.5 w-3.5 accent-amber-600" />
+                I understand this grants full Owner access.
+              </label>
+            </div>
+          )}
           <label className="flex items-start gap-2 text-xs text-foreground">
             <input type="checkbox" checked={canViewIdentity} onChange={e => setCanViewIdentity(e.target.checked)} className="mt-0.5 h-3.5 w-3.5 accent-primary" />
             Can view identified responses on Confidential surveys
@@ -252,7 +279,7 @@ function EditMemberDialog({
         {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
         <div className="mt-5 flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</Button>
+          <Button type="submit" disabled={busy || (escalatingToOwner && !confirmOwner)}>{busy ? 'Saving…' : 'Save changes'}</Button>
         </div>
       </form>
     </div>
