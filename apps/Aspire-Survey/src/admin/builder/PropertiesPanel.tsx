@@ -7,6 +7,16 @@ import { QUESTION_TYPE_LABELS, convertQuestion } from '../../engine/questionFact
 import { saveQuestionToLibrary } from '../libraryStore';
 import { LIBRARY_CATEGORIES } from '../pages/QuestionLibrary';
 import ConditionEditor from './ConditionEditor';
+import InlineListEditor from './InlineListEditor';
+
+/** One-click starting scales for a matrix, in the wording this product uses elsewhere (see the seeded Template Library). Applying one replaces the current scale outright - it is a starting point, not a merge. */
+const SCALE_PRESETS: Record<string, string[]> = {
+  Agreement: ['Strongly disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly agree'],
+  Frequency: ['Never', 'Rarely', 'Sometimes', 'Often', 'Always'],
+  Confidence: ['Not at all confident', 'Slightly confident', 'Moderately confident', 'Very confident', 'Extremely confident'],
+  Satisfaction: ['Very dissatisfied', 'Dissatisfied', 'Neutral', 'Satisfied', 'Very satisfied'],
+  Extent: ['Not at all', 'To a small extent', 'To a moderate extent', 'To a large extent', 'To a very large extent'],
+};
 
 interface Props {
   question: Question;
@@ -67,13 +77,13 @@ export default function PropertiesPanel({ question: q, earlier, readOnly, hasRes
 
         {(q.type === 'select' || q.type === 'radio' || q.type === 'checkbox') && (
           <>
-            <Field label="Options, one per line">
-              <textarea
-                disabled={readOnly}
-                rows={Math.min(10, Math.max(3, q.options.length + 1))}
-                value={q.options.join('\n')}
-                onChange={e => set({ options: e.target.value.split('\n') } as Partial<Question>)}
-                className={cn(inputCls, 'font-mono text-xs')}
+            <Field label="Options" hint="Press Enter to add the next one. Pasting several lines at once adds them all.">
+              <InlineListEditor
+                readOnly={readOnly}
+                items={q.options}
+                onChange={options => set({ options } as Partial<Question>)}
+                addLabel="+ Add option"
+                placeholder="Option text"
               />
             </Field>
 
@@ -106,17 +116,38 @@ export default function PropertiesPanel({ question: q, earlier, readOnly, hasRes
         {q.type === 'matrix' && (
           <>
             <Field
-              label="Statements, one per line"
-              hint="Order matters: each becomes a numbered column. Adding to the end is safe; reordering after responses exist changes what existing columns mean."
+              label="Statements"
+              hint="Order matters: each becomes a numbered column. Adding to the end is safe; reordering after responses exist changes what existing columns mean. Paste several lines at once to add them all."
             >
-              <textarea disabled={readOnly} rows={6} value={q.rows.join('\n')}
-                onChange={e => set({ rows: e.target.value.split('\n') } as Partial<Question>)}
-                className={cn(inputCls, 'font-mono text-xs')} />
+              <InlineListEditor
+                readOnly={readOnly}
+                items={q.rows}
+                onChange={rows => set({ rows } as Partial<Question>)}
+                addLabel="+ Add statement"
+                placeholder="Statement"
+              />
             </Field>
-            <Field label="Scale, one per line" hint="Left to right across the grid.">
-              <textarea disabled={readOnly} rows={5} value={q.scale.join('\n')}
-                onChange={e => set({ scale: e.target.value.split('\n') } as Partial<Question>)}
-                className={cn(inputCls, 'font-mono text-xs')} />
+            <Field label="Scale" hint="Left to right across the grid.">
+              {!readOnly && (
+                <div className="mb-1.5 flex flex-wrap gap-1">
+                  {Object.entries(SCALE_PRESETS).map(([name, preset]) => (
+                    <button
+                      key={name} type="button"
+                      onClick={() => set({ scale: preset } as Partial<Question>)}
+                      className="rounded border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <InlineListEditor
+                readOnly={readOnly}
+                items={q.scale}
+                onChange={scale => set({ scale } as Partial<Question>)}
+                addLabel="+ Add scale point"
+                placeholder="Scale point"
+              />
             </Field>
             <Field label="Column prefix">
               <input disabled={readOnly} value={q.columnPrefix}
