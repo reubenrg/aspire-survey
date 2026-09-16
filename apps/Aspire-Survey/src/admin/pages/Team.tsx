@@ -3,7 +3,7 @@ import { Button } from '../../components/ui/button';
 import { useAdminSession } from '../AdminGate';
 import { listMembers, addMember, updateMember, setMemberActive, type TeamMember } from '../teamStore';
 import { listOrganizations, type Organization } from '../adminStore';
-import { atLeast, type Role } from '../labels';
+import { atLeast, isOwnerEscalation, type Role } from '../labels';
 import { AccessDenied, DataTable, EmptyState, ErrorNote, PageHeader, RolePill, SkeletonRows, Td } from '../ui';
 
 const ROLES: Role[] = ['viewer', 'analyst', 'editor', 'owner'];
@@ -191,12 +191,13 @@ function AddMemberDialog({
           )}
           <Field label="Role">
             <select value={role} onChange={e => { setRole(e.target.value as Role); setConfirmOwner(false); }} className={inputCls}>
-              {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+              {ROLES.map(r => <option key={r} value={r}>{r === 'owner' ? 'owner — Full platform administration' : r}</option>)}
             </select>
           </Field>
           {role === 'owner' && (
             <div className="rounded-md border border-amber-300 bg-amber-50 p-2.5 dark:border-amber-800 dark:bg-amber-950/40">
-              <p className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-400">
+              <p className="text-[11px] font-semibold text-amber-900 dark:text-amber-300">Owner — Full platform administration</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-amber-800 dark:text-amber-400">
                 Owner can manage team membership, roles, and platform settings across every workspace this covers. Only grant it to someone who should have that level of control.
               </p>
               <label className="mt-2 flex items-start gap-2 text-[11px] font-medium text-amber-800 dark:text-amber-400">
@@ -229,7 +230,7 @@ function EditMemberDialog({
   const [confirmOwner, setConfirmOwner] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const escalatingToOwner = role === 'owner' && member.role !== 'owner';
+  const escalatingToOwner = isOwnerEscalation(member.role, role);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -253,7 +254,7 @@ function EditMemberDialog({
         <div className="space-y-3">
           <Field label="Role">
             <select value={role} onChange={e => setRole(e.target.value as Role)} className={inputCls}>
-              {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+              {ROLES.map(r => <option key={r} value={r}>{r === 'owner' ? 'owner — Full platform administration' : r}</option>)}
             </select>
             {!atLeast(role, 'analyst') && member.role !== role && (
               <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-500">This lowers their access.</p>
@@ -261,7 +262,8 @@ function EditMemberDialog({
           </Field>
           {escalatingToOwner && (
             <div className="rounded-md border border-amber-300 bg-amber-50 p-2.5 dark:border-amber-800 dark:bg-amber-950/40">
-              <p className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-400">
+              <p className="text-[11px] font-semibold text-amber-900 dark:text-amber-300">Owner — Full platform administration</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-amber-800 dark:text-amber-400">
                 Owner can manage team membership, roles, and platform settings across every workspace this covers.
               </p>
               <label className="mt-2 flex items-start gap-2 text-[11px] font-medium text-amber-800 dark:text-amber-400">

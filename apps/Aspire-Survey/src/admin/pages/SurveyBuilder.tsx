@@ -98,7 +98,7 @@ export default function SurveyBuilder() {
     setSaveState('saving');
     setSaveError(null);
     try {
-      const result = await autosaveDraft(survey.id, def, draftUpdatedAt.current);
+      const result = await autosaveDraft(survey.id, survey.slug, def, draftUpdatedAt.current);
       draftUpdatedAt.current = result.draftUpdatedAt;
       lastSavedDef.current = def;
       setSaveState('saved');

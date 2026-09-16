@@ -18,6 +18,11 @@ export function atLeast(role: Role | null, minimum: Role): boolean {
   return role !== null && ROLE_RANK[role] >= ROLE_RANK[minimum];
 }
 
+/** True only when a change actually grants Owner for the first time - not when it's already Owner. Gates the extra confirmation step in Team.tsx. */
+export function isOwnerEscalation(fromRole: Role, toRole: Role): boolean {
+  return toRole === 'owner' && fromRole !== 'owner';
+}
+
 export const PRIVACY_MODE_LABEL: Record<PrivacyMode, string> = {
   ANONYMOUS: 'Anonymous',
   ANONYMOUS_TRACKED: 'Anonymous — Participation Tracked',

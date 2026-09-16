@@ -134,7 +134,7 @@ export async function addLibraryQuestionToSurvey(
   };
 
   try {
-    await autosaveDraft(survey.id, next, survey.draft_updated_at);
+    await autosaveDraft(survey.id, surveySlug, next, survey.draft_updated_at);
   } catch (e) {
     if (e instanceof StaleWriteError) throw new Error('This survey was changed elsewhere just now. Open it in the Builder and try again.');
     throw e;

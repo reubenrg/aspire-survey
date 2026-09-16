@@ -1,9 +1,12 @@
 -- ============================================================================
--- ASPIRE SURVEY ADMIN V2 — BASELINE SCHEMA SNAPSHOT
+-- CURRENT STATE SNAPSHOT — NOT HISTORICAL MIGRATION REPLAY
+--
+-- ASPIRE SURVEY ADMIN V2 — SCHEMA SNAPSHOT
 -- Generated: 2026-09-16, via live introspection of Supabase project
 -- zpefurbbejsarkcgmscg ("Custom_Survey"), as part of the ownership-cutover
 -- Sprint 6 continuation, to close the gap between this repo's committed SQL
 -- (apps/supabase/*.sql, stale since before Sprint 4) and the live schema.
+-- See docs/SCHEMA_BASELINE.md for the short summary version of this file.
 --
 -- WHAT THIS FILE IS: a best-effort reconstruction of the CURRENT live
 -- public-schema objects (tables, columns, constraints, indexes, RLS

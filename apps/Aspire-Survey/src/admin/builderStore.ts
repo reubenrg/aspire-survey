@@ -3,6 +3,7 @@ import { tableNameFor } from '../engine/definition';
 import { validateAdditive, migrationForNewColumns, type AdditiveIssue } from '../engine/additive';
 import type { SurveyDefinition } from '../engine/types';
 import type { PrivacyMode } from './labels';
+import { assertNotLegacyReference } from './legacySurvey';
 
 export interface BuilderSurvey {
   id: string;
@@ -68,8 +69,9 @@ export class StaleWriteError extends Error {
  * successful write that quietly discarded someone else's change.
  */
 export async function autosaveDraft(
-  surveyId: string, definition: SurveyDefinition, expectedDraftUpdatedAt: string | null,
+  surveyId: string, slug: string, definition: SurveyDefinition, expectedDraftUpdatedAt: string | null,
 ): Promise<{ draftUpdatedAt: string; draftUpdatedBy: string | null }> {
+  assertNotLegacyReference(slug);
   const { data: { user } } = await supabase.auth.getUser();
   const nowIso = new Date().toISOString();
 
@@ -110,6 +112,7 @@ export interface PublishResult {
 export async function publishSurvey(
   survey: BuilderSurvey, draft: SurveyDefinition, hasResponses: boolean,
 ): Promise<PublishResult> {
+  assertNotLegacyReference(survey.slug);
   const additiveIssues = validateAdditive(survey.definition, draft, hasResponses);
   const blocking = additiveIssues.filter(i => i.severity === 'error');
   if (blocking.length > 0) {

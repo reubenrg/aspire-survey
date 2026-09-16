@@ -20,8 +20,9 @@ import assert from 'node:assert/strict';
 import { validateConfidentialityThreshold } from '../Aspire-Survey/src/admin/thresholdValidation.ts';
 import { matchesLibrarySearch, matchesTemplateSearch } from '../Aspire-Survey/src/admin/libraryFilters.ts';
 import { duplicateTitle, duplicateSlug } from '../Aspire-Survey/src/admin/duplication.ts';
-import { atLeast, type Role } from '../Aspire-Survey/src/admin/labels.ts';
+import { atLeast, isOwnerEscalation, type Role } from '../Aspire-Survey/src/admin/labels.ts';
 import { isValidHexColor, isValidLogoUrl, contrastRatio, hasSufficientContrast } from '../Aspire-Survey/src/admin/brandingValidation.ts';
+import { isLegacyReferenceSurvey, assertNotLegacyReference, LEGACY_REFERENCE_SLUG_PREFIX } from '../Aspire-Survey/src/admin/legacySurvey.ts';
 import type { Question } from '../Aspire-Survey/src/engine/types';
 
 // ── Confidentiality threshold setting (Part 20) ──────────────────────────
@@ -130,4 +131,31 @@ test('contrast ratio is 21:1 for black on white and 1:1 for a colour against its
 test('a near-white brand colour fails the sufficient-contrast check against a white background, a strongly saturated one passes', () => {
   assert.equal(hasSufficientContrast('#fefefe'), false);
   assert.equal(hasSufficientContrast('#2961B6'), true);
+});
+
+// ── Master ownership cutover ──────────────────────────────────────────────
+// The database-level guarantees here - the master owner cannot be
+// demoted/deactivated regardless of how many other owners exist, and the
+// official account's actual role/membership state - were proven live
+// against the real accounts this session (a blocked write attempt that
+// changes nothing is still a real proof, not a simulation) and are not
+// re-derived as JS here.
+
+test('a survey slug under the reserved legacy prefix is recognised as a non-editable reference, nothing else is', () => {
+  assert.equal(isLegacyReferenceSurvey('legacy-s2m-health-employees-survey'), true);
+  assert.equal(isLegacyReferenceSurvey(LEGACY_REFERENCE_SLUG_PREFIX + 'anything'), true);
+  assert.equal(isLegacyReferenceSurvey('engagement-pulse-2026'), false);
+  assert.equal(isLegacyReferenceSurvey('legacyish-survey-name'), false, 'must match the exact "legacy-" prefix, not just start with those letters');
+});
+
+test('publishing or autosaving a legacy reference survey is refused before any write is attempted — builderStore.ts calls this as its first line in both publishSurvey() and autosaveDraft(), so the guard fires before any Supabase call', () => {
+  assert.throws(() => assertNotLegacyReference('legacy-s2m-health-employees-survey'), /frozen legacy survey record/);
+  assert.doesNotThrow(() => assertNotLegacyReference('engagement-pulse-2026'));
+});
+
+test('Team.tsx only asks for the extra Owner confirmation when a change actually grants Owner for the first time — not when the member is already Owner', () => {
+  assert.equal(isOwnerEscalation('editor', 'owner'), true);
+  assert.equal(isOwnerEscalation('viewer', 'owner'), true);
+  assert.equal(isOwnerEscalation('owner', 'owner'), false, 'already-owner edits (e.g. changing identity permission) should not re-trigger the warning');
+  assert.equal(isOwnerEscalation('editor', 'analyst'), false, 'a non-owner-bound change is never an escalation');
 });
