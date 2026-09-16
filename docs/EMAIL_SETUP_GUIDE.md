@@ -4,6 +4,8 @@ This is a manual setup guide. None of the steps below can be performed through a
 
 **Pre-flight check already done (safe, read-only, no account needed):** `spigroup.in`'s root domain already has an SPF record for Google Workspace (`v=spf1 include:_spf.google.com ~all`) — almost certainly your company's primary mail. No DMARC record exists yet at `_dmarc.spigroup.in`. This confirms the dedicated-subdomain approach below is the right call: `mail.spigroup.in` gets its own independent SPF/DKIM records that cannot conflict with or weaken the root domain's existing Google Workspace mail. Nothing about your company's real email changes.
 
+**Sign-in now offers both a link and a 6-digit code** (added for accessibility — typing a code works across devices and doesn't depend on clicking a link inside an email client, which matters for screen-reader users especially). Both come from the same `signInWithOtp` call; the Magic Link template now displays `{{ .Token }}` as a code alongside the button. Confirmed against Supabase's own docs: email OTP is fixed at 6 digits — a 4-digit option only exists for SMS OTP, not email, so there's nothing to configure here beyond what's already in the template.
+
 ## 1. Resend: add and verify the sending domain
 
 1. In Resend → **Domains** → **Add Domain**, enter `mail.spigroup.in` (not the bare `spigroup.in` — keeps this fully isolated from your company's real mail).
