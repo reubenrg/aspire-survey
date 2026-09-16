@@ -23,6 +23,8 @@ interface Props {
   /** Null when unknown or the table does not exist yet. */
   responseCount?: number | null;
   currentVersion?: number;
+  /** Determines whether the SQL tab emits the identity/segmentation columns Sprint 4 added. Defaults to ANONYMOUS - unchanged behaviour for existing surveys. */
+  privacyMode?: 'ANONYMOUS' | 'ANONYMOUS_TRACKED' | 'CONFIDENTIAL';
   onChange: (def: SurveyDefinition) => void;
   onPublishedChange: (p: boolean) => void;
   onSave: () => void;
@@ -30,7 +32,7 @@ interface Props {
 
 export default function SurveyEditor({
   definition: def, published, saving, readOnly = false,
-  baseline, responseCount = null, currentVersion,
+  baseline, responseCount = null, currentVersion, privacyMode = 'ANONYMOUS',
   onChange, onPublishedChange, onSave,
 }: Props) {
   const [tab, setTab] = useState<Tab>('build');
@@ -53,9 +55,9 @@ export default function SurveyEditor({
   // A survey with a broken definition should fail here, in the editor, rather
   // than as invalid SQL pasted into the database.
   const sqlResult = useMemo(() => {
-    try { return { sql: generateFullSql(def), error: null as string | null }; }
+    try { return { sql: generateFullSql(def, privacyMode), error: null as string | null }; }
     catch (e) { return { sql: '', error: e instanceof Error ? e.message : String(e) }; }
-  }, [def]);
+  }, [def, privacyMode]);
 
   const setSections = (sections: Section[]) => onChange({ ...def, sections });
 

@@ -149,8 +149,9 @@ export default function SurveyManagement() {
                         onSelect: () => window.open(`/s/${r.slug}`, '_blank', 'noreferrer'),
                       },
                       { label: 'Share', onSelect: () => setShareFor(r) },
-                      { label: 'Responses', onSelect: () => navigate(`/admin/${r.slug}/report`) },
-                      { label: 'Analytics', disabled: true, disabledReason: 'Not built yet' },
+                      { label: 'Responses', onSelect: () => navigate(`/admin/surveys/${r.slug}/responses`) },
+                      { label: 'Analytics', onSelect: () => navigate(`/admin/surveys/${r.slug}/analytics`) },
+                      { label: 'Report', onSelect: () => navigate(`/admin/surveys/${r.slug}/report`) },
                       {
                         label: 'Duplicate', disabled: !canEdit,
                         disabledReason: !canEdit ? 'Needs editor access' : undefined,

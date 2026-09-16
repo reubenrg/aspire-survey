@@ -12,6 +12,9 @@ import SurveyDetail from './admin/pages/SurveyDetail';
 import SurveyBuilder from './admin/pages/SurveyBuilder';
 import CreateSurvey from './admin/pages/CreateSurvey';
 import SurveyAudience from './admin/pages/SurveyAudience';
+import ResponseCentre from './admin/pages/ResponseCentre';
+import SurveyAnalytics from './admin/pages/SurveyAnalytics';
+import ManagementReport from './admin/pages/ManagementReport';
 import CustomerEmployees from './admin/pages/CustomerEmployees';
 import { AdminEditor } from './routes/AdminPages';
 import ReportPage from './admin/ReportPage';
@@ -37,6 +40,13 @@ export default function AppRouter() {
         */}
         <Route path="/admin/surveys/:slug/builder" element={<AdminGate><SurveyBuilder /></AdminGate>} />
 
+        {/*
+          The management report is a customer-facing document (Part 18/19):
+          no sidebar, no admin controls, print-friendly. Same reasoning as
+          the Builder for living outside AdminShell.
+        */}
+        <Route path="/admin/surveys/:slug/report" element={<AdminGate><ManagementReport /></AdminGate>} />
+
         <Route path="/admin" element={<AdminGate><AdminShell /></AdminGate>}>
           <Route index element={<Overview />} />
           <Route path="customers" element={<Customers />} />
@@ -45,6 +55,8 @@ export default function AppRouter() {
           <Route path="surveys/new" element={<CreateSurvey />} />
           <Route path="surveys/:slug" element={<SurveyDetail />} />
           <Route path="surveys/:slug/audience" element={<SurveyAudience />} />
+          <Route path="surveys/:slug/responses" element={<ResponseCentre />} />
+          <Route path="surveys/:slug/analytics" element={<SurveyAnalytics />} />
           <Route path="responses" element={
             <ComingSoon
               title="Responses"

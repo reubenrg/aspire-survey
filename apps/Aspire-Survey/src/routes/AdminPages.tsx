@@ -102,6 +102,7 @@ export function AdminEditor() {
         baseline={baseline ?? undefined}
         responseCount={responseCount}
         currentVersion={row?.current_version}
+        privacyMode={row?.privacy_mode}
         onChange={setDef}
         onPublishedChange={setPublished}
         onSave={save}

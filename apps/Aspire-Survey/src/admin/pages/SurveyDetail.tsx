@@ -152,7 +152,9 @@ export default function SurveyDetail() {
       </div>
 
       <div className="mt-8 flex flex-wrap items-center gap-2">
-        <Link to={`/admin/${row.slug}/report`}><Button variant="outline" size="sm">View responses</Button></Link>
+        <Link to={`/admin/surveys/${row.slug}/responses`}><Button variant="outline" size="sm">Responses</Button></Link>
+        <Link to={`/admin/surveys/${row.slug}/analytics`}><Button variant="outline" size="sm">Analytics</Button></Link>
+        <Link to={`/admin/surveys/${row.slug}/report`}><Button variant="outline" size="sm">Report</Button></Link>
         <Link to={`/admin/${row.slug}`} className="text-xs text-muted-foreground hover:text-foreground">
           Open in original editor (SQL, translations) →
         </Link>
