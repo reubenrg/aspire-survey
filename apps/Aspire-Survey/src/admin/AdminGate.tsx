@@ -179,7 +179,7 @@ function SignIn() {
         />
         {error && <p className="text-xs text-destructive">{error}</p>}
         <Button type="submit" className="w-full" disabled={state === 'sending'}>
-          {state === 'sending' ? 'Sending…' : 'Email me a sign-in link'}
+          {state === 'sending' ? 'Sending…' : 'Send OTP'}
         </Button>
       </form>
     </Centered>
