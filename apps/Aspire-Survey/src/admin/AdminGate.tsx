@@ -130,8 +130,10 @@ function SignIn() {
   // both from a single signInWithOtp call. Typing it in works across devices
   // (request on a phone, enter on a desktop) and for anyone who finds clicking
   // a link in their mail client awkward - screen-reader users in particular,
-  // since a 6-digit field reads and fills far more predictably than a hidden
-  // magic-link href.
+  // since a short numeric field reads and fills far more predictably than a
+  // hidden magic-link href. Docs say email OTP is fixed at 6 digits, but this
+  // project has been observed issuing longer codes, so the field accepts up
+  // to 10 digits rather than assert a specific length.
   const verify = async (e: React.FormEvent) => {
     e.preventDefault();
     setCodeError(null);
@@ -155,12 +157,12 @@ function SignIn() {
           work once.
         </p>
         <form onSubmit={verify} className="space-y-3 text-left">
-          <label className="block text-sm font-medium text-foreground" htmlFor="admin-otp">6-digit code</label>
+          <label className="block text-sm font-medium text-foreground" htmlFor="admin-otp">Verification code</label>
           <input
             id="admin-otp" type="text" inputMode="numeric" autoComplete="one-time-code"
-            pattern="[0-9]*" maxLength={6} required value={code}
+            pattern="[0-9]*" maxLength={10} required value={code}
             onChange={e => setCode(e.target.value.replace(/[^0-9]/g, ''))}
-            placeholder="123456"
+            placeholder="Code from your email"
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-center text-lg tracking-[0.3em] outline-none focus:border-primary/60 focus:ring-2 focus:ring-ring/30"
           />
           {codeError && <p className="text-xs text-destructive">{codeError}</p>}
@@ -177,7 +179,7 @@ function SignIn() {
       <AspireMark className="mx-auto mb-4 h-10 w-10 text-primary" />
       <h1 className="mb-2 font-display text-xl text-foreground">Aspire Surveys</h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        Sign in with your email. We send a one-time link and a 6-digit code, so there is no
+        Sign in with your email. We send a one-time link and a verification code, so there is no
         password to remember or leak.
       </p>
       <form onSubmit={send} className="space-y-3 text-left">
