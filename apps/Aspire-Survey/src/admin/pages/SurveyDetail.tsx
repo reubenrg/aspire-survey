@@ -85,7 +85,7 @@ export default function SurveyDetail() {
         subtitle={`/s/${row.slug}${org ? ` · ${org.name}` : ''}`}
         actions={
           <>
-            <Button variant="outline" onClick={() => navigate(`/admin/${row.slug}`)}>Edit survey</Button>
+            <Button variant="outline" onClick={() => navigate(`/admin/surveys/${row.slug}/builder`)}>Edit survey</Button>
             <Button variant="outline" onClick={() => navigate(`/admin/surveys/${row.slug}/audience`)}>Manage audience</Button>
             {status === 'LIVE' && (
               <Button
@@ -151,8 +151,11 @@ export default function SurveyDetail() {
         )}
       </div>
 
-      <div className="mt-8 flex flex-wrap gap-2">
+      <div className="mt-8 flex flex-wrap items-center gap-2">
         <Link to={`/admin/${row.slug}/report`}><Button variant="outline" size="sm">View responses</Button></Link>
+        <Link to={`/admin/${row.slug}`} className="text-xs text-muted-foreground hover:text-foreground">
+          Open in original editor (SQL, translations) →
+        </Link>
         {!canEdit && (
           <span className="self-center text-xs text-muted-foreground">You have read-only access to this customer.</span>
         )}

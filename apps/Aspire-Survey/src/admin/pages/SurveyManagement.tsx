@@ -139,7 +139,8 @@ export default function SurveyManagement() {
                 <Td>
                   <div className="flex justify-end">
                     <RowMenu items={[
-                      { label: 'Edit', onSelect: () => navigate(`/admin/${r.slug}`) },
+                      { label: 'Edit', onSelect: () => navigate(`/admin/surveys/${r.slug}/builder`) },
+                      { label: 'Edit (original editor)', onSelect: () => navigate(`/admin/${r.slug}`) },
                       { label: 'Audience', onSelect: () => navigate(`/admin/surveys/${r.slug}/audience`) },
                       {
                         label: 'Preview',

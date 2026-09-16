@@ -67,7 +67,7 @@ export default function CreateSurvey() {
         definition, organizationId, privacyMode,
         category: effectiveCategory, purpose: purpose.trim(),
       });
-      navigate(`/admin/${row.slug}`);
+      navigate(`/admin/surveys/${row.slug}/builder`);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setBusy(false);

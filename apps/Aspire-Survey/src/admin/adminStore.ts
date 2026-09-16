@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import { tableNameFor } from '../engine/definition';
 import type { SurveyDefinition } from '../engine/types';
 import { atLeast, type PrivacyMode, type Role } from './labels';
+import { duplicateSlug, duplicateTitle } from './duplication';
 
 // Role and atLeast are pure (no Supabase dependency) and live in labels.ts so
 // they can be unit tested without a database; re-exported here since this is
@@ -221,8 +222,8 @@ export async function createSurveyDraft(input: {
 export async function duplicateSurvey(row: SurveyRow): Promise<SurveyRow> {
   const organizationId = row.organization_id;
   if (!organizationId) throw new Error('This survey has no customer to duplicate it into.');
-  const title = `${row.title} (copy)`;
-  let slug = slugify(title) || `${row.slug}-copy`;
+  const title = duplicateTitle(row.title);
+  let slug = duplicateSlug(row.title, row.slug, slugify);
   // A slug collision is likely for a straight duplicate; fall back to one
   // that is certain to be free rather than asking the admin to retype it.
   const { data: clash } = await supabase.from('surveys').select('id').eq('slug', slug).maybeSingle();

@@ -9,6 +9,7 @@ import Customers from './admin/pages/Customers';
 import ComingSoon from './admin/pages/ComingSoon';
 import SurveyManagement from './admin/pages/SurveyManagement';
 import SurveyDetail from './admin/pages/SurveyDetail';
+import SurveyBuilder from './admin/pages/SurveyBuilder';
 import CreateSurvey from './admin/pages/CreateSurvey';
 import SurveyAudience from './admin/pages/SurveyAudience';
 import CustomerEmployees from './admin/pages/CustomerEmployees';
@@ -27,6 +28,14 @@ export default function AppRouter() {
         <Route path="/" element={<App />} />
         <Route path="/s/:slug" element={<SurveyPage />} />
         <Route path="/r/:token" element={<InvitePage />} />
+
+        {/*
+          The Builder gets the full viewport and its own chrome (a compact top
+          bar, not the sidebar), so it sits outside AdminShell entirely rather
+          than as a child route - a survey editor benefits from every pixel of
+          width the three panes can get.
+        */}
+        <Route path="/admin/surveys/:slug/builder" element={<AdminGate><SurveyBuilder /></AdminGate>} />
 
         <Route path="/admin" element={<AdminGate><AdminShell /></AdminGate>}>
           <Route index element={<Overview />} />

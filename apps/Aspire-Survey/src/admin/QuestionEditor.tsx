@@ -3,7 +3,11 @@ import { cn } from '../lib/utils';
 import { Button } from '../components/ui/button';
 import type { Question, QuestionType, Section } from '../engine/types';
 import { defaultColumn } from '../engine/definition';
+import { convertQuestion, newQuestion as newQuestionOfType } from '../engine/questionFactory';
 
+// Kept exactly as this editor has always shown them - the shared factory's
+// labels (used by Builder V2's picker) read slightly differently, and this
+// screen's wording is unchanged deliberately during the transition.
 const TYPE_LABELS: Record<QuestionType, string> = {
   text: 'Short text',
   textarea: 'Long text',
@@ -181,28 +185,13 @@ function optionsOf(q?: Question): string[] {
   return q.type === 'radio' || q.type === 'checkbox' || q.type === 'select' ? q.options : [];
 }
 
-/** Keep what still applies when the type changes, and fill in what the new type needs. */
-function convert(q: Question, type: QuestionType): Question {
-  const base = { id: q.id, label: q.label, hint: q.hint, required: q.required, showIf: q.showIf, column: q.column };
-  const options = 'options' in q ? q.options : ['Option one', 'Option two'];
-  switch (type) {
-    case 'text': return { ...base, type };
-    case 'textarea': return { ...base, type };
-    case 'select': return { ...base, type, options };
-    case 'radio': return { ...base, type, options };
-    case 'checkbox': return { ...base, type, options };
-    case 'matrix': return {
-      ...base, type,
-      rows: 'rows' in q ? q.rows : ['First statement'],
-      scale: 'scale' in q ? q.scale : ['Strongly Disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly Agree'],
-      columnPrefix: 'columnPrefix' in q ? q.columnPrefix : defaultColumn(q.id),
-    };
-  }
-}
+// convert() and newQuestion() now delegate to engine/questionFactory.ts, the
+// shared source of truth also used by Builder V2 - behaviour is unchanged,
+// only the implementation moved.
+const convert = convertQuestion;
 
 export function newQuestion(section: Section): Question {
-  const n = section.questions.length + 1;
-  return { id: `${section.id}_q${n}`, type: 'text', label: '', required: false };
+  return newQuestionOfType(section, 'text');
 }
 
 const inputCls = 'w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary/60 focus:ring-2 focus:ring-ring/30';
