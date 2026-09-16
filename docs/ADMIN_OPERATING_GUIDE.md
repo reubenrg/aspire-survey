@@ -1,4 +1,4 @@
-# Aspire Survey Admin — Operating Guide
+# Aspire Surveys — Operating Guide
 
 For Aspire Customer Success / Operations. Not an engineering document — see `TECHNICAL_RUNBOOK.md` for that.
 

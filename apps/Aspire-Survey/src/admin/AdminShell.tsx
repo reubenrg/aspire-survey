@@ -47,7 +47,7 @@ export default function AdminShell() {
           <AspireMark className="h-6 w-6 shrink-0 text-primary" />
           {!collapsed && (
             <div className="min-w-0">
-              <p className="truncate font-display text-sm leading-tight text-foreground">Aspire Survey</p>
+              <p className="truncate font-display text-sm leading-tight text-foreground">Aspire Surveys</p>
               <p className="truncate text-[10px] uppercase tracking-wider text-muted-foreground">Admin</p>
             </div>
           )}
@@ -119,7 +119,7 @@ function WorkspaceContext() {
   return (
     <div className="min-w-0">
       <p className="truncate text-sm font-medium text-foreground">{scope}</p>
-      <p className="truncate text-[11px] text-muted-foreground">Aspire Survey workspace</p>
+      <p className="truncate text-[11px] text-muted-foreground">Aspire Surveys workspace</p>
     </div>
   );
 }

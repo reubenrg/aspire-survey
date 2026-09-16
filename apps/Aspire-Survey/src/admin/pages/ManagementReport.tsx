@@ -186,7 +186,7 @@ export default function ManagementReport() {
         </section>
 
         <footer className="mt-12 border-t border-border pt-4 text-[11px] text-muted-foreground">
-          Generated {new Date().toLocaleString()} · Aspire Survey
+          Generated {new Date().toLocaleString()} · Aspire Surveys
         </footer>
       </div>
     </div>

@@ -10,7 +10,7 @@ export interface PlatformSettings {
 }
 
 const DEFAULTS: PlatformSettings = {
-  platform_name: 'Aspire Survey',
+  platform_name: 'Aspire Surveys',
   default_confidentiality_threshold: 5,
   default_invitation_expiry_days: 14,
 };
