@@ -137,9 +137,12 @@ test('every privacy mode, survey status and invitation status has a human label'
   }
 });
 
-test('Confidential never uses the word Anonymous anywhere in its label or description', () => {
+test('Confidential never claims to be anonymous - the label omits the word, the description explicitly denies it', () => {
   assert.doesNotMatch(PRIVACY_MODE_LABEL.CONFIDENTIAL, /anonymous/i);
-  assert.doesNotMatch(PRIVACY_MODE_DESCRIPTION.CONFIDENTIAL, /anonymous/i);
+  // The description is allowed to say "not anonymous" - that's a clarifying
+  // denial, not a claim - but must never assert anonymity outright.
+  assert.doesNotMatch(PRIVACY_MODE_DESCRIPTION.CONFIDENTIAL, /\bis anonymous\b/i);
+  assert.match(PRIVACY_MODE_DESCRIPTION.CONFIDENTIAL, /not anonymous/i);
 });
 
 test('invitation status labels avoid ambiguous words like Active, Done or Used', () => {

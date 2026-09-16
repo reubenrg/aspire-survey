@@ -71,6 +71,7 @@ export default function InvitePage() {
   return (
     <SurveyRenderer
       definition={state.invitation.definition}
+      privacyMode={state.invitation.privacyMode}
       onSubmit={async answers => {
         const result = await submitInvitedResponse(token, answers);
         if (result.ok) { setState({ status: 'submitted' }); return; }

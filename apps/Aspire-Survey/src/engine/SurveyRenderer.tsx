@@ -9,12 +9,15 @@ import { LanguageProvider, useLang } from '../i18n/LanguageContext';
 import { TranslateProvider, useT } from './translate';
 import QuestionField from './QuestionField';
 import { missingAnswers, visibleQuestions } from './definition';
+import { RESPONDENT_PRIVACY_NOTICE, type EnginePrivacyMode } from './privacyNotices';
 import type { Answers, AnswerValue, SurveyDefinition } from './types';
 
 interface Props {
   definition: SurveyDefinition;
   /** Receives the flattened row. Resolve to finish, reject with a message to stay put. */
   onSubmit: (answers: Answers) => Promise<void>;
+  /** When known, shows the matching privacy notice on the welcome screen. Omit for contexts (e.g. the Builder's own Preview) where no real invitation/privacy mode applies yet. */
+  privacyMode?: EnginePrivacyMode;
 }
 
 export default function SurveyRenderer(props: Props) {
@@ -28,7 +31,7 @@ export default function SurveyRenderer(props: Props) {
   );
 }
 
-function SurveyBody({ definition, onSubmit }: Props) {
+function SurveyBody({ definition, onSubmit, privacyMode }: Props) {
   const { lang } = useLang();
   const t = useT();
   const [step, setStep] = useState(0);
@@ -98,6 +101,13 @@ function SurveyBody({ definition, onSubmit }: Props) {
           {definition.welcome.note && (
             <div className="my-6 rounded-lg border-l-4 border-l-primary/50 border border-border/60 bg-muted/40 px-4 py-3">
               <p className="text-xs leading-relaxed text-muted-foreground">{t(definition.welcome.note, lang)}</p>
+            </div>
+          )}
+          {privacyMode && (
+            <div className="my-6 rounded-lg border-l-4 border-l-primary/50 border border-border/60 bg-muted/40 px-4 py-3">
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                {RESPONDENT_PRIVACY_NOTICE[privacyMode]}
+              </p>
             </div>
           )}
           <div className="flex justify-center mt-8">

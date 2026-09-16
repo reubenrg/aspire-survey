@@ -3,6 +3,7 @@
  * functions with no Supabase import, so they can be unit tested directly and
  * reused by every screen that needs to show the same word for the same value.
  */
+import { RESPONDENT_PRIVACY_NOTICE } from '../engine/privacyNotices.ts';
 
 export type PrivacyMode = 'ANONYMOUS' | 'ANONYMOUS_TRACKED' | 'CONFIDENTIAL';
 export type SurveyStatus = 'DRAFT' | 'LIVE' | 'CLOSED' | 'ARCHIVED';
@@ -32,12 +33,21 @@ export const PRIVACY_MODE_LABEL: Record<PrivacyMode, string> = {
 /** One sentence, safe to put directly under the mode's name anywhere in the UI. */
 export const PRIVACY_MODE_DESCRIPTION: Record<PrivacyMode, string> = {
   ANONYMOUS:
-    'No employee participation tracking and no employee identity stored with responses. Best for open or public surveys.',
+    'One reusable link, no invitation and no employee identity involved at any point. Best for open or general feedback.',
   ANONYMOUS_TRACKED:
-    'Each employee receives an individual secure link. Aspire can track invited, opened, started and completed — but employee identity is not linked to their answers.',
+    'Each employee receives an individual secure link. Aspire can track invited, opened, started and completed — but employee identity can never be linked to their answers, even by an authorised user.',
   CONFIDENTIAL:
-    'Employees receive individual secure links and their responses are associated with their employee identity. Identity access is restricted by permissions.',
+    'Each employee receives an individual secure link. Responses are confidential, not anonymous: authorised Aspire personnel may access identified responses where permitted, but customer-facing reporting is always aggregated.',
 };
+
+/**
+ * Exact respondent-facing sentence for Confidential surveys - deliberately
+ * worded to never claim anonymity, since this mode stores an employee_id
+ * alongside the response. Re-exported from the engine (the single source
+ * of truth for what a respondent actually sees) so admin-side previews of
+ * this copy can never drift from what's really rendered.
+ */
+export const CONFIDENTIAL_RESPONDENT_NOTICE = RESPONDENT_PRIVACY_NOTICE.CONFIDENTIAL;
 
 /**
  * What the Audience page reminds the admin of, per mode. Exists to prevent a
@@ -48,7 +58,7 @@ export const PRIVACY_MODE_REMINDER: Record<PrivacyMode, string> = {
   ANONYMOUS: 'No employee participation tracking is enabled.',
   ANONYMOUS_TRACKED:
     'You can see whether employees participated, but you cannot connect an employee to their answers.',
-  CONFIDENTIAL: 'Authorised users may access identified responses.',
+  CONFIDENTIAL: 'This is confidential, not anonymous — authorised users may access identified responses.',
 };
 
 export const SURVEY_STATUS_LABEL: Record<SurveyStatus, string> = {
