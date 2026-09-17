@@ -13,7 +13,7 @@ import {
 } from '../campaignStore';
 import { eligibleRecipients } from '../campaignEligibility';
 import { renderCampaignEmail } from '../emailTemplate';
-import { PRIVACY_MODE_LABEL } from '../labels';
+import { PRIVACY_MODE_LABEL, usesInvitationLinks } from '../labels';
 import {
   ConfirmDialog, ErrorNote, InvitationStatusPill, PageHeader, PrivacyModePill, Skeleton,
 } from '../ui';
@@ -136,13 +136,31 @@ export default function SurveyCampaign() {
         </div>
       )}
 
-      {!activeCampaign ? (
+      {!usesInvitationLinks(survey.privacy_mode) ? (
+        <div className="mt-8 rounded-lg border border-dashed border-border px-6 py-10 text-center">
+          <p className="mb-1 text-sm font-medium text-foreground">This survey doesn't use employee emails</p>
+          <p className="mx-auto max-w-lg text-sm leading-relaxed text-muted-foreground">
+            {PRIVACY_MODE_LABEL[survey.privacy_mode]} surveys are answered through one shared link, with no invitation
+            and no employee identity involved — so there is no per-person email to send. Share the survey link from the
+            survey page instead.
+          </p>
+        </div>
+      ) : !survey.organization_id ? (
+        <div className="mt-8 rounded-lg border border-dashed border-border px-6 py-10 text-center">
+          <p className="mb-1 text-sm font-medium text-foreground">This survey has no customer</p>
+          <p className="text-sm text-muted-foreground">
+            A campaign belongs to a customer. Assign this survey to one before sending anything.
+          </p>
+        </div>
+      ) : !activeCampaign ? (
         <div className="mt-8 rounded-lg border border-dashed border-border px-6 py-10 text-center">
           <p className="mb-1 text-sm font-medium text-foreground">No campaign yet</p>
           <p className="mb-4 text-sm text-muted-foreground">
-            {eligibility.valid.length === 0
-              ? 'Build this survey\'s audience on the Audience page first.'
-              : 'Create a campaign to compose, test and send an invitation email to this survey\'s audience.'}
+            {audience.length === 0
+              ? 'Build this survey\'s audience on the Audience page first, then come back here to email it.'
+              : eligibility.valid.length === 0
+                ? 'Nobody in this audience has a usable email address yet. Add emails to these employees first.'
+                : 'Create a campaign to compose, test and send an invitation email to this survey\'s audience.'}
           </p>
           {canEdit && eligibility.valid.length > 0 && (
             <Button disabled={busy} onClick={() => act(async () => {
@@ -158,7 +176,8 @@ export default function SurveyCampaign() {
         </div>
       ) : (
         <div className="mt-8 space-y-8">
-          <ComposerSection campaign={activeCampaign} survey={survey} orgName={org?.name ?? 'this customer'} canEdit={canEdit} busy={busy} onSave={patch => act(() => updateCampaignComposer(activeCampaign.id, survey.organization_id!, patch))} />
+          {/* Keyed so a different campaign never inherits the previous one's unsaved composer text. */}
+          <ComposerSection key={activeCampaign.id} campaign={activeCampaign} survey={survey} orgName={org?.name ?? 'this customer'} canEdit={canEdit} busy={busy} onSave={patch => act(() => updateCampaignComposer(activeCampaign.id, survey.organization_id!, patch))} />
           <TestSection campaign={activeCampaign} canEdit={canEdit} busy={busy} onSent={() => act(() => markCampaignTested(activeCampaign.id))} />
           <SendSection
             campaign={activeCampaign} canEdit={canEdit} busy={busy} domainVerified={domainVerified}
@@ -186,7 +205,7 @@ export default function SurveyCampaign() {
   );
 }
 
-function SummaryCell({ label, value, warn }: { label: string; value: number; warn?: boolean }) {
+function SummaryCell({ label, value, warn }: { label: string; value: number | string; warn?: boolean }) {
   return (
     <div className="bg-background px-4 py-3.5">
       <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
@@ -394,6 +413,10 @@ function MonitorSection({
   onMarkCompleted: () => void;
 }) {
   const completionRate = summary.total > 0 ? Math.round((summary.completed / summary.total) * 100) : 0;
+  // Generating a link rotates that invitation's token, which silently kills
+  // whatever link is already sitting in that person's inbox. Harmless before
+  // anything was sent; destructive afterwards, so it asks first.
+  const [confirmCopy, setConfirmCopy] = useState<CampaignRecipientRow | null>(null);
 
   return (
     <section>
@@ -403,7 +426,7 @@ function MonitorSection({
         <SummaryCell label="Failed" value={summary.failed} warn={summary.failed > 0} />
         <SummaryCell label="Opened" value={summary.opened} />
         <SummaryCell label="Completed" value={summary.completed} />
-        <SummaryCell label="Completion" value={completionRate} />
+        <SummaryCell label="Completion" value={`${completionRate}%`} />
       </div>
 
       {canEdit && (
@@ -437,7 +460,15 @@ function MonitorSection({
                 <td className="px-3 py-2 text-right">
                   {canEdit && r.invitation_status !== 'REVOKED' && (
                     <div className="flex justify-end gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => onCopyLink(r.invitation_id)}>Copy link</Button>
+                      <Button
+                        size="sm" variant="ghost"
+                        onClick={() => {
+                          if (r.delivery_status === 'NOT_SENT' && r.invitation_status === 'NOT_SENT') onCopyLink(r.invitation_id);
+                          else setConfirmCopy(r);
+                        }}
+                      >
+                        Copy link
+                      </Button>
                       {r.invitation_status !== 'COMPLETED' && (
                         <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => onRevoke(r.invitation_id)}>Revoke</Button>
                       )}
@@ -452,6 +483,25 @@ function MonitorSection({
           </tbody>
         </table>
       </div>
+
+      {confirmCopy && (
+        <ConfirmDialog
+          title="Generate a new link?"
+          body={
+            <>
+              <p className="mb-2">
+                {confirmCopy.employee_name} has already been sent a link. Generating a new one immediately
+                <strong> breaks the link already in their inbox</strong> — if they click the old one it will no longer work.
+              </p>
+              <p>Only do this if the original link is lost or broken.</p>
+            </>
+          }
+          confirmLabel="Generate new link"
+          destructive
+          onConfirm={() => { const r = confirmCopy; setConfirmCopy(null); onCopyLink(r.invitation_id); }}
+          onCancel={() => setConfirmCopy(null)}
+        />
+      )}
     </section>
   );
 }

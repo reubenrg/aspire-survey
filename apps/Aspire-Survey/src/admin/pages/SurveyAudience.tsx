@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { useAdminSession } from '../AdminGate';
 import { getSurvey, listOrganizations, type Organization, type SurveyRow } from '../adminStore';
@@ -21,6 +21,7 @@ type AudienceCriterion = 'all' | 'department' | 'designation' | 'location' | 'se
 
 export default function SurveyAudience() {
   const { slug = '' } = useParams();
+  const navigate = useNavigate();
   const session = useAdminSession();
 
   const [survey, setSurvey] = useState<SurveyRow | null>(null);
@@ -133,13 +134,30 @@ export default function SurveyAudience() {
       <PageHeader
         title={`${survey.title} — Audience`}
         subtitle={org ? org.name : undefined}
-        actions={canManage && invitationBased ? <Button onClick={() => setBuilderOpen(true)}>Build audience</Button> : undefined}
+        actions={canManage && invitationBased ? (
+          <>
+            <Button variant="outline" onClick={() => setBuilderOpen(true)}>Build audience</Button>
+            <Button onClick={() => navigate(`/admin/surveys/${survey.slug}/campaign`)}>Email this audience →</Button>
+          </>
+        ) : undefined}
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <PrivacyModePill mode={survey.privacy_mode} />
         <span className="text-sm text-muted-foreground">{PRIVACY_MODE_REMINDER[survey.privacy_mode]}</span>
       </div>
+
+      {invitationBased && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border border-l-4 border-l-primary bg-primary/5 px-4 py-3">
+          <p className="text-sm leading-relaxed text-foreground">
+            Copying links one at a time is only for one-off cases. To write the invitation email once and send every
+            employee their own link, use <strong>Distribution</strong>.
+          </p>
+          <Button size="sm" onClick={() => navigate(`/admin/surveys/${survey.slug}/campaign`)}>
+            Go to Distribution
+          </Button>
+        </div>
+      )}
 
       {error && <ErrorNote>{error}</ErrorNote>}
       {notice && (
@@ -350,6 +368,10 @@ function CopyLinkDialog({
         </div>
         <p className="mt-2 text-[11px] text-muted-foreground">
           This link will not be shown again after you close this window. Copy it now, or regenerate a new one later.
+        </p>
+        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+          Sending to the whole audience? Don't copy these one by one — <strong className="text-foreground">Distribution</strong> writes
+          the email once and gives every employee their own link automatically.
         </p>
 
         <div className="mt-5 flex justify-end gap-2">
