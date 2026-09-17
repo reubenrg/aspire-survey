@@ -119,7 +119,7 @@ export default function CustomerEmployees() {
                     <Button
                       variant="ghost" size="sm"
                       onClick={async () => {
-                        try { await setEmployeeActive(e.id, !e.is_active); await load(); }
+                        try { await setEmployeeActive(e.id, customerId, !e.is_active); await load(); }
                         catch (err) { setError(err instanceof Error ? err.message : String(err)); }
                       }}
                     >
@@ -178,7 +178,7 @@ function EmployeeDialog({
     e.preventDefault();
     setBusy(true); setError(null);
     try {
-      if (employee) await updateEmployee(employee.id, form);
+      if (employee) await updateEmployee(employee.id, customerId, form);
       else await createEmployee(customerId, form);
       onSaved();
     } catch (err) {

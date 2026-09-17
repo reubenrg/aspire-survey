@@ -48,7 +48,7 @@ export default function ReportPage() {
     if (!row) return;
     setBusy(true); setError(null); setNote(null);
     try {
-      const { csv, rows } = await exportResponsesCsv(slug, row.table_name, orgId);
+      const { csv, rows } = await exportResponsesCsv(slug, row.table_name, orgId, row.privacy_mode);
       if (rows === 0) { setNote('No responses to export yet.'); return; }
       downloadFile(`${slug}-responses-${new Date().toISOString().slice(0, 10)}.csv`, csv);
       setNote(`Exported ${rows} response${rows === 1 ? '' : 's'}. This download was recorded in the audit log.`);

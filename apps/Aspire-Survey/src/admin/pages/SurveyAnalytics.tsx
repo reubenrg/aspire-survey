@@ -276,9 +276,12 @@ function SegmentationPanel({ slug, privacyMode, version }: { slug: string; priva
           <BarChart data={(summary.groups ?? []).map(g => ({ label: g.value, n: g.n }))} />
           {(summary.suppressedGroups ?? 0) > 0 && (
             <p className="mt-3 rounded-md border border-border border-l-4 border-l-amber-500 bg-amber-500/5 px-3 py-2 text-xs text-amber-700 dark:text-amber-500">
-              Not enough responses to display {summary.suppressedGroups} group{summary.suppressedGroups === 1 ? '' : 's'}
-              {' '}({summary.suppressedResponses} response{summary.suppressedResponses === 1 ? '' : 's'} total) while protecting confidentiality.
-              Groups below {summary.threshold} responses are never shown individually.
+              Not enough responses to display {summary.suppressedGroups} group{summary.suppressedGroups === 1 ? '' : 's'} while protecting confidentiality.
+              {/* The combined response count across hidden groups is only ever shown when 2+ groups are suppressed together - with exactly
+                  one hidden group, that total would just be that one group's exact size, which is precisely what suppression exists to hide.
+                  See survey_segment_summary()'s own comment for the server-side half of this guarantee. */}
+              {summary.suppressedResponses != null && ` (${summary.suppressedResponses} responses total across those groups)`}
+              {' '}Groups below {summary.threshold} responses are never shown individually.
             </p>
           )}
           {(summary.groups ?? []).length === 0 && (summary.suppressedGroups ?? 0) === 0 && (

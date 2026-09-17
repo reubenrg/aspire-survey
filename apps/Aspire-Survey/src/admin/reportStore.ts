@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { toCsv } from './csvExport';
 
 export interface ReportStats {
   total: number;
@@ -130,36 +131,34 @@ export async function fetchAuditPage(
   return { rows: (data ?? []) as AuditEntry[], total: count ?? 0 };
 }
 
-function csvCell(value: unknown): string {
-  if (value === null || value === undefined) return '';
-  const s = Array.isArray(value) ? value.join('; ') : String(value);
-  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
+/** Matches this table's declared column grants: authenticated can never select these, so they'd never appear in `data` below - listed only so coarsening/redaction code has one place to point at. */
+const IDENTITY_COLUMNS = ['employee_id', 'resp_department', 'resp_location', 'resp_designation'];
 
-export function toCsv(rows: Record<string, unknown>[]): string {
-  if (rows.length === 0) return '';
-  const headers = Object.keys(rows[0]);
-  const lines = [headers.join(',')];
-  for (const row of rows) lines.push(headers.map(h => csvCell(row[h])).join(','));
-  // \r\n so the file opens cleanly in Excel, which is where these end up.
-  return lines.join('\r\n');
-}
+/** Same defensive cap analyticsStore.ts's paginated export already uses, applied here too now that this path pulls in one shot rather than paging. */
+const EXPORT_ROW_CAP = 20000;
 
 /**
- * Pull every response row and hand back a CSV.
+ * Pull response rows and hand back a CSV.
  *
- * Reads the table directly, so it succeeds only for analyst and above; a viewer
- * gets a permission error from Postgres rather than an empty file that looks
- * like "no responses yet". The audit entry is written before the download
- * starts, so a failed write stops the export rather than leaving an
- * unrecorded one.
+ * Reads the table directly (via the column grant, not a security-definer
+ * function), so it succeeds only for analyst and above; a viewer gets a
+ * permission error from Postgres rather than an empty file that looks like
+ * "no responses yet". Column grants already exclude employee_id/
+ * resp_department/resp_location/resp_designation for every privacy mode, so
+ * a raw select can't surface those - but the table itself always stores
+ * `submitted_at` at full precision, and only survey_response_page()/_one()
+ * apply the hour-coarsening ANONYMOUS_TRACKED promises. Reproduced here so
+ * this export path can't quietly undercut that guarantee. The audit entry
+ * is written before the download starts, so a failed write stops the
+ * export rather than leaving an unrecorded one.
  */
 export async function exportResponsesCsv(
   slug: string,
   tableName: string,
   organizationId: string | null,
+  privacyMode: 'ANONYMOUS' | 'ANONYMOUS_TRACKED' | 'CONFIDENTIAL',
 ): Promise<{ csv: string; rows: number }> {
-  const { data, error } = await supabase.from(tableName).select('*').order('submitted_at');
+  const { data, error } = await supabase.from(tableName).select('*').order('submitted_at').limit(EXPORT_ROW_CAP);
   if (error) {
     if (error.code === '42501') {
       throw new Error('You need the analyst role or higher to export responses.');
@@ -167,7 +166,20 @@ export async function exportResponsesCsv(
     throw new Error(error.message);
   }
 
-  const rows = (data ?? []) as Record<string, unknown>[];
+  let rows = (data ?? []) as Record<string, unknown>[];
+  if (privacyMode === 'ANONYMOUS_TRACKED') {
+    rows = rows.map(r => {
+      const submittedAt = r.submitted_at;
+      if (typeof submittedAt !== 'string') return r;
+      const d = new Date(submittedAt);
+      d.setUTCMinutes(0, 0, 0);
+      return { ...r, submitted_at: d.toISOString() };
+    });
+  }
+  // Defense in depth: strip these even though the grant already excludes
+  // them from `data`, so this function is safe on its own terms too.
+  rows = rows.map(r => Object.fromEntries(Object.entries(r).filter(([k]) => !IDENTITY_COLUMNS.includes(k))));
+
   await recordAudit(organizationId, 'DATA_EXPORTED', {
     survey: slug,
     table: tableName,

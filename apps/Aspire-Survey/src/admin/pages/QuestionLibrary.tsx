@@ -130,6 +130,7 @@ export default function QuestionLibrary() {
 function LibraryQuestionDialog({
   existing, onClose, onSaved,
 }: { existing: LibraryQuestion | null; onClose: () => void; onSaved: () => void }) {
+  const session = useAdminSession();
   const [type, setType] = useState<QuestionType>(existing?.definition.type ?? 'text');
   const [question, setQuestion] = useState<Question>(existing?.definition ?? newQuestion({ id: 'q', title: '', questions: [] }, 'text'));
   const [category, setCategory] = useState(existing?.category ?? LIBRARY_CATEGORIES[0]);
@@ -139,9 +140,24 @@ function LibraryQuestionDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Existing rows keep whatever scope they already have (shown, not
+  // editable, via `existing.organization_id`); only a brand-new question
+  // needs a scope choice. A global editor may still share it (scope stays
+  // "shared"), but anyone whose only role is workspace-scoped needs
+  // "workspace" - the old hardcoded organizationId: null silently failed
+  // for them with an unexplained permission error, since only a global
+  // editor can write a shared (organization_id null) row.
+  const canShareGlobally = session.can(null, 'editor');
+  const [orgs, setOrgs] = useState<Organization[]>([]);
+  const [scope, setScope] = useState<'shared' | 'workspace'>(canShareGlobally ? 'shared' : 'workspace');
+  const [workspaceOrgId, setWorkspaceOrgId] = useState('');
+  useEffect(() => { if (!existing) void listOrganizations().then(setOrgs); }, [existing]);
+  const writableOrgs = orgs.filter(o => session.can(o.id, 'editor'));
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!question.label.trim()) { setError('The question needs some text.'); return; }
+    if (!existing && scope === 'workspace' && !workspaceOrgId) { setError('Choose which customer this question belongs to.'); return; }
     setBusy(true); setError(null);
     try {
       const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
@@ -150,7 +166,8 @@ function LibraryQuestionDialog({
           definition: question, category, tags: tagList, language, help_text: helpText || null,
         });
       } else {
-        await saveQuestionToLibrary({ question, organizationId: null, category, tags: tagList, language, helpText });
+        const organizationId = scope === 'shared' ? null : workspaceOrgId;
+        await saveQuestionToLibrary({ question, organizationId, category, tags: tagList, language, helpText });
       }
       onSaved();
     } catch (err) {
@@ -196,6 +213,26 @@ function LibraryQuestionDialog({
           <Field label="Tags, comma separated">
             <input value={tags} onChange={e => setTags(e.target.value)} placeholder="pulse, quarterly" className={inputCls} />
           </Field>
+          {!existing && (
+            <Field label="Visibility">
+              <select
+                value={scope}
+                onChange={e => setScope(e.target.value as 'shared' | 'workspace')}
+                className={inputCls}
+              >
+                {canShareGlobally && <option value="shared">Shared library (any workspace)</option>}
+                <option value="workspace">One customer's workspace only</option>
+              </select>
+            </Field>
+          )}
+          {!existing && scope === 'workspace' && (
+            <Field label="Customer">
+              <select value={workspaceOrgId} onChange={e => setWorkspaceOrgId(e.target.value)} className={inputCls}>
+                <option value="">Choose a customer…</option>
+                {writableOrgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+              </select>
+            </Field>
+          )}
         </div>
 
         {error && <p className="mt-3 text-xs text-destructive">{error}</p>}

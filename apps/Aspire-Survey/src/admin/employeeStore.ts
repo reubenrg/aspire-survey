@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { MappedEmployeeRow } from './csv';
+import { recordAudit } from './reportStore';
 
 export interface Employee {
   id: string;
@@ -124,6 +125,15 @@ export async function createEmployee(organizationId: string, input: EmployeeInpu
     .select(COLUMNS)
     .single();
   if (error) throw translateEmployeeError(error, 'add this employee');
+
+  // Best-effort: a failed audit write must never re-classify an employee that
+  // was actually created as a failure, since importEmployees() below builds
+  // its failed-row list from caught exceptions and a retried "failure" would
+  // then collide with the employee_code that already landed.
+  try {
+    await recordAudit(organizationId, 'EMPLOYEE_CREATED', { employee_code: code });
+  } catch { /* audit trail is best-effort; the employee row is the source of truth */ }
+
   return data as Employee;
 }
 
@@ -135,6 +145,7 @@ export async function createEmployee(organizationId: string, input: EmployeeInpu
  */
 export async function updateEmployee(
   id: string,
+  organizationId: string,
   patch: Partial<Omit<EmployeeInput, 'employee_code'>>,
 ): Promise<void> {
   if (patch.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(patch.email.trim())) {
@@ -155,10 +166,14 @@ export async function updateEmployee(
     })
     .eq('id', id);
   if (error) throw translateEmployeeError(error, 'update this employee');
+
+  try {
+    await recordAudit(organizationId, 'EMPLOYEE_UPDATED', { employee_id: id, fields: Object.keys(patch) });
+  } catch { /* audit trail is best-effort; the update itself already succeeded */ }
 }
 
-export async function setEmployeeActive(id: string, active: boolean): Promise<void> {
-  return updateEmployee(id, { is_active: active });
+export async function setEmployeeActive(id: string, organizationId: string, active: boolean): Promise<void> {
+  return updateEmployee(id, organizationId, { is_active: active });
 }
 
 export async function existingEmployeeCodes(organizationId: string): Promise<Set<string>> {
@@ -201,5 +216,14 @@ export async function importEmployees(
       result.failed.push({ row, message: e instanceof Error ? e.message : String(e) });
     }
   }
+
+  if (result.imported > 0) {
+    try {
+      await recordAudit(organizationId, 'EMPLOYEES_IMPORTED', {
+        imported: result.imported, failed: result.failed.length,
+      });
+    } catch { /* per-row EMPLOYEE_CREATED entries already cover the audit trail */ }
+  }
+
   return result;
 }
