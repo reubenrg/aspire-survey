@@ -148,6 +148,13 @@ Deno.serve(async (req: Request) => {
   const { data: isEditor } = await userClient.rpc("has_survey_role", { target_org_id: campaign.organization_id, minimum: "editor" });
   if (!isEditor) return json({ ok: false, error: "You need the editor role to act on this campaign" }, 403);
 
+  // Attributed to the real acting admin, not the service role: read once
+  // here from the caller's own JWT, then passed explicitly into
+  // service_record_audit() below (which record_audit() itself cannot do,
+  // since a service-role connection carries no JWT for it to read).
+  const { data: userData } = await userClient.auth.getUser();
+  const actorEmail = userData.user?.email ?? "";
+
   const { data: survey } = await admin.from("surveys").select("title").eq("id", campaign.survey_id).maybeSingle();
   const { data: org } = await admin.from("organizations").select("name").eq("id", campaign.organization_id).maybeSingle();
   const dueDate = campaign.due_date ? new Date(campaign.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
@@ -183,6 +190,10 @@ Deno.serve(async (req: Request) => {
       error: result.ok ? null : result.error,
     }).eq("id", testSendId);
 
+    if (result.ok) {
+      await admin.rpc("service_record_audit", { p_organization_id: campaign.organization_id, p_actor_email: actorEmail, p_action_type: "TEST_EMAIL_SENT", p_details: { campaign_id: campaignId, recipient_email: recipientEmail } });
+    }
+
     return json(result.ok ? { ok: true } : { ok: false, error: result.error });
   }
 
@@ -200,6 +211,7 @@ Deno.serve(async (req: Request) => {
   if (mode === "send") {
     if (campaign.status === "SENDING") return json({ ok: false, error: "This campaign is already sending." }, 409);
     await admin.from("survey_campaigns").update({ status: "SENDING", updated_at: new Date().toISOString() }).eq("id", campaignId);
+    await admin.rpc("service_record_audit", { p_organization_id: campaign.organization_id, p_actor_email: actorEmail, p_action_type: "CAMPAIGN_STARTED", p_details: { campaign_id: campaignId } });
 
     // Only NOT_SENT/FAILED: a recipient already SENT/DELIVERED/QUEUED is left
     // alone, so a retried send pass never double-emails someone who already
@@ -214,13 +226,17 @@ Deno.serve(async (req: Request) => {
     let sent = 0, failed = 0;
     for (const r of recipients ?? []) {
       const outcome = await sendOneRecipient(admin, campaign, survey?.title ?? "", org?.name ?? "", dueDate, r.id, r.invitation_id);
-      if (outcome.ok) sent++; else failed++;
+      if (outcome.ok) sent++; else {
+        failed++;
+        await admin.rpc("service_record_audit", { p_organization_id: campaign.organization_id, p_actor_email: actorEmail, p_action_type: "RECIPIENT_SEND_FAILED", p_details: { campaign_id: campaignId, campaign_recipient_id: r.id } });
+      }
     }
 
-    const finalStatus = failed === 0 ? "SENT" : sent === 0 ? "PARTIALLY_FAILED" : "PARTIALLY_FAILED";
+    const finalStatus = failed === 0 ? "SENT" : "PARTIALLY_FAILED";
     await admin.from("survey_campaigns").update({
       status: finalStatus, sent_at: new Date().toISOString(), updated_at: new Date().toISOString(),
     }).eq("id", campaignId);
+    await admin.rpc("service_record_audit", { p_organization_id: campaign.organization_id, p_actor_email: actorEmail, p_action_type: finalStatus === "SENT" ? "CAMPAIGN_COMPLETED" : "CAMPAIGN_PARTIALLY_FAILED", p_details: { campaign_id: campaignId, sent, failed } });
 
     return json({ ok: failed === 0, sent, failed });
   }
@@ -233,8 +249,12 @@ Deno.serve(async (req: Request) => {
     let sent = 0, failed = 0;
     for (const c of (candidates ?? []) as { recipient_id: string; invitation_id: string }[]) {
       const outcome = await sendOneRecipient(admin, campaign, survey?.title ?? "", org?.name ?? "", dueDate, c.recipient_id, c.invitation_id);
-      if (outcome.ok) sent++; else failed++;
+      if (outcome.ok) sent++; else {
+        failed++;
+        await admin.rpc("service_record_audit", { p_organization_id: campaign.organization_id, p_actor_email: actorEmail, p_action_type: "RECIPIENT_SEND_FAILED", p_details: { campaign_id: campaignId, campaign_recipient_id: c.recipient_id, reminder: true } });
+      }
     }
+    await admin.rpc("service_record_audit", { p_organization_id: campaign.organization_id, p_actor_email: actorEmail, p_action_type: "REMINDER_SENT", p_details: { campaign_id: campaignId, sent, failed } });
     return json({ ok: failed === 0, sent, failed });
   }
 
