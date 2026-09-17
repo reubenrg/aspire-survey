@@ -1,0 +1,61 @@
+# Migrations
+
+Every file in `migrations/` is named `<version>_<name>.sql`, where `<version>` is
+the exact `YYYYMMDDHHMM` timestamp and `<name>` the exact name Supabase recorded
+in `supabase_migrations.schema_migrations` when it was applied to project
+`zpefurbbejsarkcgmscg`, and the file's contents are the exact SQL statements
+Supabase executed (pulled byte-for-byte from that table's `statements` column,
+not retyped from memory). Applying them in order against a fresh database
+reproduces the current schema from this point in history forward.
+
+**From 2026-09-17 onward, every database change is written as a migration file
+first (or alongside being applied) and committed with the code that depends on
+it.** No more direct, uncommitted `apply_migration` calls.
+
+## Historical gap
+
+Migrations before `20260917033741` (everything through `master_owner_safety_invariant`,
+2026-09-16 — the 29 migrations `docs/SCHEMA_BASELINE.md` counts) were applied
+directly to the project and were never captured as individual repo files. That
+gap is not backfilled here; `apps/supabase/schema_snapshot.sql` remains the
+byte-exact record of *what the schema looked like* at that point, even though
+*how it got there* isn't replayable migration-by-migration. See
+`docs/SCHEMA_BASELINE.md` for that snapshot's own caveats.
+
+The 24 migrations below close the gap from that baseline forward.
+
+## Migration log
+
+| Version | Name | What it does | Severity |
+|---|---|---|---|
+| `20260917033741` | `campaign_distribution_center` | Campaign/Distribution Center schema: `survey_campaigns`, `survey_campaign_recipients`, `survey_email_events`, `survey_campaign_test_sends`, plus the campaign lifecycle functions (build recipients, test send, schedule, cancel, complete, reminders). Layered on top of the existing `survey_invitations` model — a campaign never stores or re-derives a raw token. | — (feature) |
+| `20260917035315` | `campaign_service_audit` | `service_record_audit()`: lets the `send-campaign` Edge Function (service-role, no user JWT) write real audit entries for send/remind events instead of silently skipping them. | — (feature) |
+| `20260917043824` | `create_survey_behaviour_change_table` | One-off: provisions the response table for the `behaviour-change` QA/demo survey by hand, predating `ensure_survey_response_table()`. | — (fixture) |
+| `20260917044840` | `ensure_survey_response_table` | First version of the auto-provisioning function: derives a survey's response table from its own stored `definition`, so publishing no longer depends on an admin hand-running generated SQL. | HIGH (closes a publish-time gap) |
+| `20260917044947` | `ensure_survey_response_table_fix_array_append` | Fixes a `types \|\| 'text'` array-append ambiguity that made every provisioning call fail with "malformed array literal". | — (bugfix) |
+| `20260917065146` | `harden_ensure_survey_response_table` | Adds target-table safety: table name must match `survey_<name>`, must not already belong to another survey, and (if it already exists) must structurally look like a response table (id + submitted_at + definition_version). Closes a privilege-escalation hole where an editor could repoint `surveys.table_name` at `employees`, `survey_invitations`, or the frozen legacy `survey_responses`. Self-discovered and proven exploitable before the fix. | CRITICAL |
+| `20260917083325` | `grant_privacy_mode_to_anon` | Grants anon `select (privacy_mode)` on `surveys`, so the open `/s/:slug` route can render the correct respondent privacy notice (previously only the invited path could). | — (bugfix) |
+| `20260917083416` | `dedupe_privacy_notice_in_welcome_note` | One-time data cleanup: strips the privacy sentence out of `welcome.note` on templates/surveys where it exactly matches one of the two known notice strings, now that both respondent routes render it as a dedicated box. | — (bugfix) |
+| `20260917092009` | `block_identity_columns_in_distribution_functions` | Adds an `employee_id`/`resp_department`/`resp_location`/`resp_designation` denylist to `survey_columns_distribution()`, `survey_multiselect_distribution()`, `survey_text_count()`. Proven live beforehand: an `analyst`-only caller could request `employee_id` directly and get back a real employee UUID, bypassing `can_view_identity()` entirely. | CRITICAL |
+| `20260917092220` | `enforce_closed_survey_on_open_insert_policy` | The open `/s/:slug` path had no closed-survey enforcement — the anon SELECT policy only checked `published`, and every response table's INSERT policy was `with check (true)`. Adds the `published`/`closed_at` check to the policy-creation logic. (Its own retroactive backfill loop turned out to be a no-op — see the next entry.) | HIGH |
+| `20260917092259` | `retrofit_closed_check_on_existing_response_tables` | Re-runs the previous migration's backfill without the `has_survey_role()` gate, which had silently skipped every table (that check reads `auth.jwt()`, empty in a migration's own execution context). Caught by re-querying `pg_policy` after the first attempt rather than assuming it worked. | HIGH (fix for the fix) |
+| `20260917092339` | `grant_closed_at_to_anon_for_rls_subquery` | Grants anon `select (closed_at)` on `surveys` — the new policy's subquery runs under anon's own privileges (not SECURITY DEFINER) and needs the grant, or every insert fails, not just closed ones. Caught by testing immediately. | — (bugfix) |
+| `20260917092658` | `protect_master_owner_email_setting` | `BEFORE INSERT OR UPDATE` trigger on `platform_settings`: only the current master owner may write the `master_owner_email` key. Closes a hijack path where any global owner could reassign master-owner status to themselves. | MEDIUM |
+| `20260917092906` | `enforce_customer_deactivation_cascade` | Deactivating a customer (`organizations.is_active = false`) was purely cosmetic — nothing checked it anywhere. Extends `resolve_invitation()`, `submit_invited_response()`, `issue_invitations()`, the `surveys` SELECT policy, and every response table's INSERT policy to require the parent org be active. First pass of a direct-join approach that needed the four follow-up migrations below before it worked end to end. | HIGH |
+| `20260917092953` | `grant_organizations_is_active_to_anon` | Follow-up grant: anon had zero privilege on `organizations` at all. | — (bugfix) |
+| `20260917093122` | `grant_surveys_organization_id_to_anon` | Follow-up grant: the join condition also needs `surveys.organization_id`. | — (bugfix) |
+| `20260917093231` | `grant_organizations_id_to_anon` | Follow-up grant: the join also needs `organizations.id` — Postgres requires column privilege for every column a query references, not just the output columns. | — (bugfix) |
+| `20260917093352` | `fix_response_insert_check_via_security_definer` | Root cause of the previous three: `organizations` has RLS enabled with no anon-admitting policy, so even with every grant satisfied, the join silently returned zero rows and the subquery evaluated `NULL` (→ `false`). Replaces the direct join with `survey_accepting_responses()`, a narrow `SECURITY DEFINER` helper matching the codebase's own established pattern (`has_survey_role`, `can_view_identity`), and revokes the now-unneeded grants added while chasing this. | HIGH (architectural fix) |
+| `20260917093417` | `fix_surveys_select_policy_org_active_check` | Same RLS-through-RLS bug, same fix, for the `surveys` SELECT policy: adds `organization_is_active()` as a `SECURITY DEFINER` helper. | HIGH (architectural fix) |
+| `20260917093512` | `restrict_open_path_to_anonymous_surveys` | The open `/s/:slug` path had no `privacy_mode` check at all — anyone with the base slug URL could submit unlimited un-invited responses to a CONFIDENTIAL or ANONYMOUS_TRACKED survey. Adds `s.privacy_mode = 'ANONYMOUS'` to `survey_accepting_responses()`. Proven live beforehand: a plain anon insert into a CONFIDENTIAL response table succeeded with no invitation at all. Most severe finding of the session. | CRITICAL |
+| `20260917093649` | `fix_segment_summary_suppressed_count_leak` | `survey_segment_summary()`'s `suppressed_responses` field disclosed the exact headcount of a suppressed group whenever exactly one group was suppressed (routine, not an edge case) — defeating the ≥5 suppression threshold. Now withheld unless 2+ groups are suppressed. Proven live beforehand: returned `suppressed_groups:1, suppressed_responses:1` — an exact headcount. | CRITICAL |
+| `20260917095019` | `fix_response_page_search_redaction_leak` | `survey_response_page()`'s search (`p_search`) ran against the raw, unredacted row before `employee_id`/`resp_department`/`resp_location`/`resp_designation` were stripped for output — a viewer without identity rights could search for a department/location value and learn which rows matched it, even though that column never appeared in the response. Restructured so search runs against the already-redacted projection. Proven live beforehand: a non-identity analyst searching "Operations" got back a row whose `resp_department` was never shown. | MEDIUM |
+| `20260917095255` | `reserve_response_columns_in_all_privacy_modes` | `ensure_survey_response_table()`'s reserved-column denylist only protected `resp_department`/`resp_location`/`resp_designation` for non-ANONYMOUS surveys, but the table DDL always creates those columns regardless of mode. A question could claim one of those names on an ANONYMOUS survey, producing either a raw "column specified more than once" failure (new table) or a silently-skipped ALTER that routed a real answer into a column every export path treats as reserved and strips (existing table). Now reserved in every mode. | MEDIUM |
+| `20260917095448` | `enforce_is_active_in_member_authorization` | `get_user_role()` (which backs `has_survey_role()`, gating nearly every authorization check in the schema), `can_view_identity()`, and `is_survey_member()` never filtered on `survey_members.is_active`. Deactivating a team member via the Team page's "Deactivate" button changed only a cosmetic badge — the member kept full role-based access, identity-view rights, and read access to `organizations`/`question_library`/`survey_templates`/`platform_settings` platform-wide. Self-discovered while auditing an unrelated area; proven live both before (all three checks returned `true` for a deactivated row) and after (all three now correctly return `false`, with an active control member unaffected). | HIGH |
+
+## Applying against a fresh database
+
+These migrations assume the schema state captured in `schema_snapshot.sql`
+already exists (they `ALTER`/`CREATE OR REPLACE` on top of it, and several
+`do $$ ... $$` backfill blocks assume specific tables already have rows). They
+are not a standalone bootstrap script.

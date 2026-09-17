@@ -1,26 +1,28 @@
 # Schema Baseline
 
 **Supabase project ref:** `zpefurbbejsarkcgmscg` ("Custom_Survey")
-**Date:** 2026-09-16
+**Date:** 2026-09-16, updated 2026-09-17 (Backend Hardening Phase A)
 
-This is a summary. The full generated snapshot is `apps/supabase/schema_snapshot.sql`, labeled `CURRENT STATE SNAPSHOT — NOT HISTORICAL MIGRATION REPLAY`. Do not apply it to production — every object in it already exists there.
+This is a summary. The full generated snapshot is `apps/supabase/schema_snapshot.sql`, labeled `CURRENT STATE SNAPSHOT — NOT HISTORICAL MIGRATION REPLAY`. Do not apply it to production — every object in it already exists there. **The snapshot itself was not regenerated during the 2026-09-17 update below** — table/function/RLS counts here reflect live introspection as of 2026-09-17, but `schema_snapshot.sql`'s actual file contents still date from 2026-09-16; treat the counts in this file, not the snapshot file, as current.
 
-## Current core tables (11)
-`organizations`, `survey_members`, `surveys`, `survey_versions`, `employees`, `survey_invitations`, `audit_logs`, `question_library`, `survey_templates`, `platform_settings`, `survey_admins` (legacy, pre-RBAC).
+## Current core tables
+11 as of 2026-09-16 (`organizations`, `survey_members`, `surveys`, `survey_versions`, `employees`, `survey_invitations`, `audit_logs`, `question_library`, `survey_templates`, `platform_settings`, `survey_admins` — legacy, pre-RBAC), **plus 4 added 2026-09-17** for the Campaign/Distribution Center: `survey_campaigns`, `survey_campaign_recipients`, `survey_email_events`, `survey_campaign_test_sends` (see `apps/supabase/migrations/20260917033741_campaign_distribution_center.sql`).
 
-Not included (out of scope for this baseline): per-survey response tables, dynamically created one per published survey by the Builder's publish flow, and the frozen legacy `survey_responses` table, which predates Admin V2 and belongs to the S2M respondent app.
+Not included (out of scope for this baseline): per-survey response tables, dynamically created one per published survey by the Builder's publish flow, and the frozen legacy `survey_responses` table, which predates Admin V2 and belongs to the S2M respondent app (still exactly 2 rows, verified 2026-09-17).
 
 ## Current functions
-**39**, all `security definer`, all `set search_path = public`. Every one is captured byte-exact (via `pg_get_functiondef`) in `schema_snapshot.sql`.
+**56** as of 2026-09-17 (was 39 on 2026-09-16), of which **51 are `security definer`, all 51 `set search_path = public`** (re-verified live by introspection on 2026-09-17, zero exceptions). The 2026-09-16 snapshot's byte-exact `pg_get_functiondef` capture in `schema_snapshot.sql` predates the 24 migrations below — for the current definition of any function touched since, read its migration file in `apps/supabase/migrations/`, not the snapshot.
 
 ## Current RLS status
-RLS is enabled on all 11 core tables. `survey_members` and `survey_admins` have **zero** SELECT policies — all real access to them goes through the security-definer functions (`has_survey_role`, `get_user_role`, `list_team_members`, etc.), never a direct table read. Every other table has explicit role-gated policies; `anon` gets exactly one: reading a narrow public column subset on `surveys` for published-survey rendering.
+RLS is enabled on all core tables. `survey_members` and `survey_admins` have **zero** SELECT policies — all real access to them goes through the security-definer functions (`has_survey_role`, `get_user_role`, `list_team_members`, etc.), never a direct table read. Every other table has explicit role-gated policies. `anon`'s grants as of 2026-09-17: `surveys` (`slug, title, definition, table_name, published, current_version, privacy_mode, closed_at`) and per-survey response tables (`insert` only, gated through `survey_accepting_responses()`) — `organizations` has **zero** anon grant (the `organization_is_active()`/`survey_accepting_responses()` SECURITY DEFINER helpers check it without exposing it directly; see `apps/supabase/MIGRATIONS.md`'s `fix_response_insert_check_via_security_definer` entry for why a direct grant+join approach was tried and reverted).
 
 ## Current migration count
-**29** migrations tracked in `supabase_migrations.schema_migrations`, applied directly against this project, chronological, all additive/corrective — no destructive drops.
+**53** migrations tracked in `supabase_migrations.schema_migrations` (was 29 on 2026-09-16), chronological, all additive/corrective — no destructive drops. **The 24 migrations from 2026-09-17 onward are now committed as individual files in `apps/supabase/migrations/`** (see `apps/supabase/MIGRATIONS.md` for the full log with severity and rationale) — this closes the "not committed to the repo" gap described below, for this point in history forward.
 
 ## Statement on repository history
 
-The historical migrations were applied directly to this Supabase project and were **not** committed to this repository as they landed — `apps/supabase/*.sql` predates Sprint 4 and doesn't reflect the schema from that point forward. The repo's own record of *how* the schema got here is therefore incomplete; Supabase's internal tracking is the only complete, ordered history. `schema_snapshot.sql` closes the gap for *what the schema looks like now*, not *how it got there*. Going forward, new migrations should be committed to the repo as they're written, before or alongside being applied.
+The migrations from 2026-09-16 and earlier (the 29 counted above) were applied directly to this Supabase project and were **not** committed to this repository as they landed — `apps/supabase/*.sql` (the loose files outside `migrations/`) predates Sprint 4 and doesn't reflect the schema from that point forward. That specific historical gap is not backfilled; `schema_snapshot.sql` remains the byte-exact record of *what the schema looked like* at that point, not *how it got there*.
 
-This was generated by SQL introspection, not `supabase db dump`, because neither the Supabase CLI nor `pg_dump` available in this working environment were authenticated against this project (both resolved to a different Supabase account). Whoever has real CLI access to `zpefurbbejsarkcgmscg` can run `supabase link --project-ref zpefurbbejsarkcgmscg && supabase db dump --schema public` for a byte-perfect replacement of the table/policy/grant portions of the snapshot (the function definitions are already byte-exact either way).
+**As of 2026-09-17, that gap is closed going forward**: every migration applied since (`campaign_distribution_center` through `enforce_is_active_in_member_authorization`, 24 files) is committed to `apps/supabase/migrations/` with the exact SQL Supabase executed, pulled byte-for-byte from `supabase_migrations.schema_migrations` rather than retyped from memory. New migrations are written as files first (or alongside being applied) and committed with the code that depends on them — see `apps/supabase/MIGRATIONS.md`.
+
+The 2026-09-16 snapshot was generated by SQL introspection, not `supabase db dump`, because neither the Supabase CLI nor `pg_dump` available in that working environment were authenticated against this project (both resolved to a different Supabase account). Whoever has real CLI access to `zpefurbbejsarkcgmscg` can run `supabase link --project-ref zpefurbbejsarkcgmscg && supabase db dump --schema public` for a byte-perfect replacement of the table/policy/grant portions of the snapshot (the function definitions are already byte-exact either way, and the 2026-09-17 functions are byte-exact in their own migration files regardless).
