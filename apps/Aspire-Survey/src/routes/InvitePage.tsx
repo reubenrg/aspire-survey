@@ -74,7 +74,7 @@ export default function InvitePage() {
       privacyMode={state.invitation.privacyMode}
       onStart={() => { void markInvitationStarted(token); }}
       onSubmit={async answers => {
-        const result = await submitInvitedResponse(token, answers);
+        const result = await submitInvitedResponse(token, state.invitation.definition, answers);
         if (result.ok) { setState({ status: 'submitted' }); return; }
         if (result.reason === 'ALREADY_SUBMITTED' || result.reason === 'COMPLETED') {
           setState({ status: 'submitted' });

@@ -102,6 +102,21 @@ export interface PublishResult {
 }
 
 /**
+ * Creates (or extends) the survey's own response table from its stored
+ * definition, server-side. Safe to call repeatedly; never drops or retypes a
+ * column, matching the additive-only guarantee the builder already enforces.
+ */
+export async function ensureResponseTable(surveyId: string): Promise<void> {
+  const { error } = await supabase.rpc('ensure_survey_response_table', { p_survey_id: surveyId });
+  if (error) {
+    throw new Error(
+      `The survey was saved, but its response table could not be set up: ${error.message}. ` +
+      'Responses cannot be collected until this succeeds - try publishing again.',
+    );
+  }
+}
+
+/**
  * Publishes the draft: runs the existing additive-only guard against the
  * currently-live definition (skipped entirely when there are no responses,
  * exactly as the original editor does), snapshots the new definition into
@@ -146,6 +161,14 @@ export async function publishSurvey(
     })
     .eq('id', survey.id);
   if (error) fail(error, 'publish this survey');
+
+  // The response table is derived from the definition that was just written,
+  // so this has to run after the update above, not before. Without it a
+  // survey published through this flow has nowhere to store answers and every
+  // respondent hits NO_TABLE - the table used to be created only by pasting
+  // the old editor's generated SQL in by hand, which nothing here surfaced.
+  // Idempotent: creates the table once, then only ever adds missing columns.
+  await ensureResponseTable(survey.id);
 
   return { version: nextVersion, additiveWarnings: additiveIssues.filter(i => i.severity === 'warning') };
 }

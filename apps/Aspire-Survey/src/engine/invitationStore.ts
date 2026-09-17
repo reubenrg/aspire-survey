@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { buildRow } from './definition';
 import type { Answers, SurveyDefinition } from './types';
 
 export type InvitationProblem = 'INVALID' | 'REVOKED' | 'COMPLETED' | 'EXPIRED' | 'CLOSED' | 'UNAVAILABLE';
@@ -50,11 +51,21 @@ export async function markInvitationStarted(token: string): Promise<void> {
 
 export type SubmitProblem = InvitationProblem | 'ALREADY_SUBMITTED' | 'EMPTY' | 'NO_TABLE';
 
+/**
+ * Flattens answers into the survey's actual response columns before sending,
+ * exactly as surveyStore.submitResponse() does for the open /s/:slug path.
+ *
+ * This is not optional plumbing: submit_invited_response() matches payload
+ * keys against real column names, and a matrix question's answers live under
+ * its question id as an object of row-label -> value. Sending raw answers
+ * therefore matched nothing for matrix questions, and every matrix answer was
+ * silently dropped while the submission still reported success.
+ */
 export async function submitInvitedResponse(
-  token: string, answers: Answers,
+  token: string, definition: SurveyDefinition, answers: Answers,
 ): Promise<{ ok: true } | { ok: false; reason: SubmitProblem }> {
   const { data, error } = await supabase.rpc('submit_invited_response', {
-    p_token: token, p_payload: answers,
+    p_token: token, p_payload: buildRow(definition, answers),
   });
   if (error) throw new Error(error.message || 'Submission failed. Please try again.');
   const r = data as { ok: boolean; reason?: SubmitProblem };

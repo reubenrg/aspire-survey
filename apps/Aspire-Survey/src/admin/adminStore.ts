@@ -246,6 +246,20 @@ export async function setPublished(slug: string, published: boolean): Promise<vo
     .update({ published, updated_at: new Date().toISOString() })
     .eq('slug', slug);
   if (error) fail(error, published ? 'publish this survey' : 'unpublish this survey');
+
+  // Publishing from here skips the Builder entirely, so it needs the same
+  // response-table provisioning the Builder's own Publish does - otherwise
+  // this path still produces a live survey with nowhere to store answers.
+  if (!published) return;
+  const { data } = await supabase.from('surveys').select('id').eq('slug', slug).maybeSingle();
+  if (!data) return;
+  const { error: tableError } = await supabase.rpc('ensure_survey_response_table', { p_survey_id: data.id });
+  if (tableError) {
+    throw new Error(
+      `This survey is published, but its response table could not be set up: ${tableError.message}. ` +
+      'Responses cannot be collected until this succeeds - try publishing again.',
+    );
+  }
 }
 
 /** Archiving is the end of a survey's lifecycle; the row and its responses stay. */
