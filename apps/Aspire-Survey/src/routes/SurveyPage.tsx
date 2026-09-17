@@ -54,6 +54,17 @@ export default function SurveyPage() {
     );
   }
 
+  if (state.record.closedAt) {
+    return (
+      <Centered>
+        <h1 className="text-xl font-display text-foreground mb-2">This survey has closed</h1>
+        <p className="text-sm text-muted-foreground">
+          This survey is not currently accepting responses.
+        </p>
+      </Centered>
+    );
+  }
+
   return (
     <SurveyRenderer
       definition={state.record.definition}

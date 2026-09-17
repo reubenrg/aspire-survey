@@ -11,6 +11,7 @@ export interface SurveyRecord {
   published: boolean;
   currentVersion: number;
   privacyMode: EnginePrivacyMode;
+  closedAt: string | null;
 }
 
 export class SurveyNotFound extends Error {
@@ -29,7 +30,7 @@ export class SurveyNotFound extends Error {
 export async function loadSurvey(slug: string): Promise<SurveyRecord> {
   const { data, error } = await supabase
     .from('surveys')
-    .select('slug, title, definition, table_name, published, current_version, privacy_mode')
+    .select('slug, title, definition, table_name, published, current_version, privacy_mode, closed_at')
     .eq('slug', slug)
     .maybeSingle();
 
@@ -44,6 +45,7 @@ export async function loadSurvey(slug: string): Promise<SurveyRecord> {
     published: data.published,
     currentVersion: data.current_version ?? 1,
     privacyMode: data.privacy_mode as EnginePrivacyMode,
+    closedAt: data.closed_at,
   };
 }
 
@@ -73,6 +75,14 @@ export async function submitResponse(record: SurveyRecord, answers: Answers): Pr
     throw new Error(
       `The response table "${table}" does not exist yet. Run the generated SQL for this survey first.`,
     );
+  }
+  if (error.code === '42501') {
+    // The response table's own INSERT policy re-checks published/closed_at
+    // at write time - this is the defense-in-depth path for a survey that
+    // closed in the moments between loading the page and submitting it. The
+    // proactive closedAt check in SurveyPage.tsx is what respondents
+    // normally see; this is the backstop if that state went stale.
+    throw new Error('This survey is not currently accepting responses.');
   }
   throw new Error(error.message || 'Submission failed. Please try again.');
 }
