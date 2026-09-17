@@ -142,6 +142,7 @@ export default function SurveyManagement() {
                       { label: 'Edit', onSelect: () => navigate(`/admin/surveys/${r.slug}/builder`) },
                       { label: 'Edit (original editor)', onSelect: () => navigate(`/admin/${r.slug}`) },
                       { label: 'Audience', onSelect: () => navigate(`/admin/surveys/${r.slug}/audience`) },
+                      { label: 'Distribution', onSelect: () => navigate(`/admin/surveys/${r.slug}/campaign`) },
                       {
                         label: 'Preview',
                         disabled: r.status !== 'LIVE',

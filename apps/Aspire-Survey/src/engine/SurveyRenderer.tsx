@@ -18,6 +18,8 @@ interface Props {
   onSubmit: (answers: Answers) => Promise<void>;
   /** When known, shows the matching privacy notice on the welcome screen. Omit for contexts (e.g. the Builder's own Preview) where no real invitation/privacy mode applies yet. */
   privacyMode?: EnginePrivacyMode;
+  /** Fired once, the moment the respondent leaves the welcome screen. Omit where there's no invitation to mark (e.g. an open /s/:slug survey, or the Builder's Preview). */
+  onStart?: () => void;
 }
 
 export default function SurveyRenderer(props: Props) {
@@ -31,7 +33,7 @@ export default function SurveyRenderer(props: Props) {
   );
 }
 
-function SurveyBody({ definition, onSubmit, privacyMode }: Props) {
+function SurveyBody({ definition, onSubmit, privacyMode, onStart }: Props) {
   const { lang } = useLang();
   const t = useT();
   const [step, setStep] = useState(0);
@@ -111,7 +113,7 @@ function SurveyBody({ definition, onSubmit, privacyMode }: Props) {
             </div>
           )}
           <div className="flex justify-center mt-8">
-            <Button onClick={() => go(1)}>{t(definition.welcome.startLabel || 'Begin Survey', lang)}</Button>
+            <Button onClick={() => { onStart?.(); go(1); }}>{t(definition.welcome.startLabel || 'Begin Survey', lang)}</Button>
           </div>
         </div>
       </div>

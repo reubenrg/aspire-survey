@@ -87,6 +87,7 @@ export default function SurveyDetail() {
           <>
             <Button variant="outline" onClick={() => navigate(`/admin/surveys/${row.slug}/builder`)}>Edit survey</Button>
             <Button variant="outline" onClick={() => navigate(`/admin/surveys/${row.slug}/audience`)}>Manage audience</Button>
+            <Button variant="outline" onClick={() => navigate(`/admin/surveys/${row.slug}/campaign`)}>Distribution</Button>
             {status === 'LIVE' && (
               <Button
                 variant="outline"

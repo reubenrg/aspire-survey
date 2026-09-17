@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import SurveyRenderer from '../engine/SurveyRenderer';
 import {
-  resolveInvitation, submitInvitedResponse, type ResolvedInvitation, type SubmitProblem,
+  markInvitationStarted, resolveInvitation, submitInvitedResponse, type ResolvedInvitation, type SubmitProblem,
 } from '../engine/invitationStore';
 
 type State =
@@ -72,6 +72,7 @@ export default function InvitePage() {
     <SurveyRenderer
       definition={state.invitation.definition}
       privacyMode={state.invitation.privacyMode}
+      onStart={() => { void markInvitationStarted(token); }}
       onSubmit={async answers => {
         const result = await submitInvitedResponse(token, answers);
         if (result.ok) { setState({ status: 'submitted' }); return; }

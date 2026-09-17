@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import App from './App';
 import SurveyPage from './routes/SurveyPage';
 import InvitePage from './routes/InvitePage';
+import TestInvitePage from './routes/TestInvitePage';
 import AdminGate from './admin/AdminGate';
 import AdminShell from './admin/AdminShell';
 import Overview from './admin/pages/Overview';
@@ -12,6 +13,7 @@ import SurveyDetail from './admin/pages/SurveyDetail';
 import SurveyBuilder from './admin/pages/SurveyBuilder';
 import CreateSurvey from './admin/pages/CreateSurvey';
 import SurveyAudience from './admin/pages/SurveyAudience';
+import SurveyCampaign from './admin/pages/SurveyCampaign';
 import ResponseCentre from './admin/pages/ResponseCentre';
 import SurveyAnalytics from './admin/pages/SurveyAnalytics';
 import ManagementReport from './admin/pages/ManagementReport';
@@ -36,6 +38,7 @@ export default function AppRouter() {
         <Route path="/" element={<App />} />
         <Route path="/s/:slug" element={<SurveyPage />} />
         <Route path="/r/:token" element={<InvitePage />} />
+        <Route path="/t/:token" element={<TestInvitePage />} />
 
         {/*
           The Builder gets the full viewport and its own chrome (a compact top
@@ -60,6 +63,7 @@ export default function AppRouter() {
           <Route path="surveys/new" element={<CreateSurvey />} />
           <Route path="surveys/:slug" element={<SurveyDetail />} />
           <Route path="surveys/:slug/audience" element={<SurveyAudience />} />
+          <Route path="surveys/:slug/campaign" element={<SurveyCampaign />} />
           <Route path="surveys/:slug/responses" element={<ResponseCentre />} />
           <Route path="surveys/:slug/analytics" element={<SurveyAnalytics />} />
           <Route path="responses" element={

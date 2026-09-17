@@ -34,6 +34,20 @@ export async function resolveInvitation(token: string): Promise<
   };
 }
 
+/**
+ * Marks an invitation STARTED the moment its respondent leaves the welcome
+ * screen. Best-effort: a failure here must never block someone from taking
+ * the survey, so callers fire this without awaiting its outcome and this
+ * function swallows its own errors rather than surfacing them.
+ */
+export async function markInvitationStarted(token: string): Promise<void> {
+  try {
+    await supabase.rpc('mark_invitation_started', { p_token: token });
+  } catch {
+    // Best-effort signal only - never worth interrupting the respondent for.
+  }
+}
+
 export type SubmitProblem = InvitationProblem | 'ALREADY_SUBMITTED' | 'EMPTY' | 'NO_TABLE';
 
 export async function submitInvitedResponse(
