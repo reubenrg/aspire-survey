@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { buildRow, tableNameFor } from './definition';
+import type { EnginePrivacyMode } from './privacyNotices';
 import type { Answers, SurveyDefinition } from './types';
 
 export interface SurveyRecord {
@@ -9,6 +10,7 @@ export interface SurveyRecord {
   tableName: string;
   published: boolean;
   currentVersion: number;
+  privacyMode: EnginePrivacyMode;
 }
 
 export class SurveyNotFound extends Error {
@@ -27,7 +29,7 @@ export class SurveyNotFound extends Error {
 export async function loadSurvey(slug: string): Promise<SurveyRecord> {
   const { data, error } = await supabase
     .from('surveys')
-    .select('slug, title, definition, table_name, published, current_version')
+    .select('slug, title, definition, table_name, published, current_version, privacy_mode')
     .eq('slug', slug)
     .maybeSingle();
 
@@ -41,6 +43,7 @@ export async function loadSurvey(slug: string): Promise<SurveyRecord> {
     tableName: data.table_name,
     published: data.published,
     currentVersion: data.current_version ?? 1,
+    privacyMode: data.privacy_mode as EnginePrivacyMode,
   };
 }
 

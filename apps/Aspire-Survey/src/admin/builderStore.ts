@@ -102,16 +102,25 @@ export interface PublishResult {
 }
 
 /**
- * Creates (or extends) the survey's own response table from its stored
- * definition, server-side. Safe to call repeatedly; never drops or retypes a
- * column, matching the additive-only guarantee the builder already enforces.
+ * Creates (or extends) the survey's own response table, server-side. Safe to
+ * call repeatedly; never drops or retypes a column, matching the additive-only
+ * guarantee the builder already enforces.
+ *
+ * `definition` provisions the table for a definition that is about to be
+ * published rather than the one currently stored, so the table is ready
+ * before the survey goes live. It is JSON data, never SQL: the function
+ * validates every identifier it derives, and still takes the target table
+ * name from the survey row rather than from anything passed in here.
  */
-export async function ensureResponseTable(surveyId: string): Promise<void> {
-  const { error } = await supabase.rpc('ensure_survey_response_table', { p_survey_id: surveyId });
+export async function ensureResponseTable(surveyId: string, definition?: SurveyDefinition): Promise<void> {
+  const { error } = await supabase.rpc('ensure_survey_response_table', {
+    p_survey_id: surveyId,
+    p_definition: definition ?? null,
+  });
   if (error) {
     throw new Error(
-      `The survey was saved, but its response table could not be set up: ${error.message}. ` +
-      'Responses cannot be collected until this succeeds - try publishing again.',
+      `This survey's response table could not be set up: ${error.message}. ` +
+      'Nothing was published, because a live survey with nowhere to store answers would silently lose every response.',
     );
   }
 }
@@ -135,6 +144,14 @@ export async function publishSurvey(
       `This can't be published: ${blocking[0].message}` + (blocking.length > 1 ? ` (and ${blocking.length - 1} more issue${blocking.length - 1 === 1 ? '' : 's'}.)` : ''),
     );
   }
+
+  // Provision the response table for the definition about to go live BEFORE
+  // anything is flipped. If this throws, the survey keeps its previous
+  // definition and published state and the draft is untouched - there is no
+  // state where a survey is live with nowhere to store answers. Adding the
+  // new columns first is harmless on its own: until the definition is
+  // published, nothing writes to them.
+  await ensureResponseTable(survey.id, draft);
 
   const { data: { user } } = await supabase.auth.getUser();
   const nextVersion = survey.current_version + 1;
@@ -161,14 +178,6 @@ export async function publishSurvey(
     })
     .eq('id', survey.id);
   if (error) fail(error, 'publish this survey');
-
-  // The response table is derived from the definition that was just written,
-  // so this has to run after the update above, not before. Without it a
-  // survey published through this flow has nowhere to store answers and every
-  // respondent hits NO_TABLE - the table used to be created only by pasting
-  // the old editor's generated SQL in by hand, which nothing here surfaced.
-  // Idempotent: creates the table once, then only ever adds missing columns.
-  await ensureResponseTable(survey.id);
 
   return { version: nextVersion, additiveWarnings: additiveIssues.filter(i => i.severity === 'warning') };
 }

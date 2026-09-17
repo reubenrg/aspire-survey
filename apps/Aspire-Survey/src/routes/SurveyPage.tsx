@@ -57,6 +57,7 @@ export default function SurveyPage() {
   return (
     <SurveyRenderer
       definition={state.record.definition}
+      privacyMode={state.record.privacyMode}
       onSubmit={answers => submitResponse(state.record, answers)}
     />
   );

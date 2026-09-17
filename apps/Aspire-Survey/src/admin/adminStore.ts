@@ -241,25 +241,29 @@ export async function duplicateSurvey(row: SurveyRow): Promise<SurveyRow> {
 
 /** Flips published on its own, without touching the definition or bumping its version. */
 export async function setPublished(slug: string, published: boolean): Promise<void> {
+  // Publishing from here skips the Builder entirely, so it needs the same
+  // response-table provisioning the Builder's Publish does - and, like there,
+  // it has to happen BEFORE the survey goes live, so a failure can never
+  // leave a published survey with nowhere to store answers.
+  if (published) {
+    const { data } = await supabase.from('surveys').select('id').eq('slug', slug).maybeSingle();
+    if (!data) throw new Error(`No survey called "${slug}".`);
+    const { error: tableError } = await supabase.rpc('ensure_survey_response_table', {
+      p_survey_id: data.id, p_definition: null,
+    });
+    if (tableError) {
+      throw new Error(
+        `This survey's response table could not be set up: ${tableError.message}. ` +
+        'Nothing was published, because a live survey with nowhere to store answers would silently lose every response.',
+      );
+    }
+  }
+
   const { error } = await supabase
     .from('surveys')
     .update({ published, updated_at: new Date().toISOString() })
     .eq('slug', slug);
   if (error) fail(error, published ? 'publish this survey' : 'unpublish this survey');
-
-  // Publishing from here skips the Builder entirely, so it needs the same
-  // response-table provisioning the Builder's own Publish does - otherwise
-  // this path still produces a live survey with nowhere to store answers.
-  if (!published) return;
-  const { data } = await supabase.from('surveys').select('id').eq('slug', slug).maybeSingle();
-  if (!data) return;
-  const { error: tableError } = await supabase.rpc('ensure_survey_response_table', { p_survey_id: data.id });
-  if (tableError) {
-    throw new Error(
-      `This survey is published, but its response table could not be set up: ${tableError.message}. ` +
-      'Responses cannot be collected until this succeeds - try publishing again.',
-    );
-  }
 }
 
 /** Archiving is the end of a survey's lifecycle; the row and its responses stay. */
