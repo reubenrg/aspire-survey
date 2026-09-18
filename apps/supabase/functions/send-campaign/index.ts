@@ -155,8 +155,8 @@ Deno.serve(async (req: Request) => {
   const { data: userData } = await userClient.auth.getUser();
   const actorEmail = userData.user?.email ?? "";
 
-  const { data: survey } = await admin.from("surveys").select("title").eq("id", campaign.survey_id).maybeSingle();
-  const { data: org } = await admin.from("organizations").select("name").eq("id", campaign.organization_id).maybeSingle();
+  const { data: survey } = await admin.from("surveys").select("title, published, closed_at").eq("id", campaign.survey_id).maybeSingle();
+  const { data: org } = await admin.from("organizations").select("name, is_active").eq("id", campaign.organization_id).maybeSingle();
   const dueDate = campaign.due_date ? new Date(campaign.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
 
   // ── TEST: sandbox sender is fine here regardless of the production gate -
@@ -206,6 +206,20 @@ Deno.serve(async (req: Request) => {
   const verified = gate?.value === true;
   if (!verified) {
     return json({ ok: false, error: "Production email domain is not verified. Bulk employee email sending is disabled until a founder verifies a custom domain and enables this setting." }, 403);
+  }
+
+  // A real send/remind is pointless (and confusing to the recipient) once the
+  // survey or its customer is no longer accepting responses - the link would
+  // still be correctly rejected at submission time by resolve_invitation()/
+  // submit_invited_response()'s own checks, but there is no reason to mail it
+  // out in the first place. Test sends above intentionally skip this, same as
+  // they skip the production-domain gate: a test never reaches a real
+  // employee either way.
+  if (!survey?.published || survey.closed_at) {
+    return json({ ok: false, error: "This survey is closed or unpublished. Reopen it before sending or reminding." }, 409);
+  }
+  if (!org?.is_active) {
+    return json({ ok: false, error: "This customer is deactivated. Reactivate it before sending or reminding." }, 409);
   }
 
   if (mode === "send") {
