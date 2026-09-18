@@ -23,6 +23,21 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
+/**
+ * One structured line per notable event, to Supabase's own function log
+ * (queryable via query_logs / the dashboard) - never response content,
+ * employee PII beyond an id, invitation/magic-link tokens, the Resend API
+ * key, or anything else secret. This is deliberately separate from
+ * record_audit()/service_record_audit(): those are the durable business
+ * record ("a campaign was sent"), this is operational detail for answering
+ * "what failed, where, for which campaign, how many recipients, was it
+ * auth/validation/DB/provider, and how long did it take" without querying
+ * audit_logs for every diagnostic question.
+ */
+function logEvent(fields: Record<string, unknown>): void {
+  console.log(JSON.stringify({ event_ts: new Date().toISOString(), ...fields }));
+}
+
 // ── Email rendering ─────────────────────────────────────────────────────
 // Deliberately duplicated from apps/Aspire-Survey/src/admin/emailTemplate.ts:
 // this Edge Function runs on Deno, that module ships to the browser/Node test
@@ -193,6 +208,10 @@ Deno.serve(async (req: Request) => {
     if (result.ok) {
       await admin.rpc("service_record_audit", { p_organization_id: campaign.organization_id, p_actor_email: actorEmail, p_action_type: "TEST_EMAIL_SENT", p_details: { campaign_id: campaignId, recipient_email: recipientEmail } });
     }
+    logEvent({
+      event: "campaign_test_send", operation: "test", campaign_id: campaignId, survey_id: campaign.survey_id,
+      result: result.ok ? "ok" : "provider_error", error_code: result.ok ? null : "EMAIL_PROVIDER_ERROR",
+    });
 
     return json(result.ok ? { ok: true } : { ok: false, error: result.error });
   }
@@ -223,8 +242,22 @@ Deno.serve(async (req: Request) => {
   }
 
   if (mode === "send") {
-    if (campaign.status === "SENDING") return json({ ok: false, error: "This campaign is already sending." }, 409);
-    await admin.from("survey_campaigns").update({ status: "SENDING", updated_at: new Date().toISOString() }).eq("id", campaignId);
+    // Atomic claim, not check-then-act: two "Send" clicks arriving at nearly
+    // the same instant could otherwise both read status !== 'SENDING' before
+    // either write landed, and both proceed to email every recipient. The
+    // UPDATE ... WHERE status <> 'SENDING' ... RETURNING id is a single
+    // statement Postgres serializes per row, so only one concurrent caller
+    // ever gets a non-empty result back.
+    const { data: claimed } = await admin
+      .from("survey_campaigns")
+      .update({ status: "SENDING", updated_at: new Date().toISOString() })
+      .eq("id", campaignId)
+      .neq("status", "SENDING")
+      .select("id");
+    if (!claimed || claimed.length === 0) {
+      logEvent({ event: "campaign_send_conflict", operation: "send", campaign_id: campaignId, result: "already_sending" });
+      return json({ ok: false, error: "This campaign is already sending." }, 409);
+    }
     await admin.rpc("service_record_audit", { p_organization_id: campaign.organization_id, p_actor_email: actorEmail, p_action_type: "CAMPAIGN_STARTED", p_details: { campaign_id: campaignId } });
 
     // Only NOT_SENT/FAILED: a recipient already SENT/DELIVERED/QUEUED is left
@@ -236,6 +269,9 @@ Deno.serve(async (req: Request) => {
       .select("id, invitation_id")
       .eq("campaign_id", campaignId)
       .in("delivery_status", ["NOT_SENT", "FAILED"]);
+
+    const sendStarted = Date.now();
+    logEvent({ event: "campaign_send_started", operation: "send", campaign_id: campaignId, survey_id: campaign.survey_id, actor: actorEmail, recipient_count: recipients?.length ?? 0 });
 
     let sent = 0, failed = 0;
     for (const r of recipients ?? []) {
@@ -251,6 +287,10 @@ Deno.serve(async (req: Request) => {
       status: finalStatus, sent_at: new Date().toISOString(), updated_at: new Date().toISOString(),
     }).eq("id", campaignId);
     await admin.rpc("service_record_audit", { p_organization_id: campaign.organization_id, p_actor_email: actorEmail, p_action_type: finalStatus === "SENT" ? "CAMPAIGN_COMPLETED" : "CAMPAIGN_PARTIALLY_FAILED", p_details: { campaign_id: campaignId, sent, failed } });
+    logEvent({
+      event: "campaign_send_completed", operation: "send", campaign_id: campaignId, survey_id: campaign.survey_id,
+      result: finalStatus, sent, failed, duration_ms: Date.now() - sendStarted,
+    });
 
     return json({ ok: failed === 0, sent, failed });
   }
@@ -260,6 +300,9 @@ Deno.serve(async (req: Request) => {
     // caller's own JWT, so it goes through userClient, not the service-role
     // admin client (which carries no JWT and would fail that check).
     const { data: candidates } = await userClient.rpc("campaign_reminder_candidates", { p_campaign_id: campaignId });
+    const remindStarted = Date.now();
+    logEvent({ event: "campaign_remind_started", operation: "remind", campaign_id: campaignId, survey_id: campaign.survey_id, actor: actorEmail, recipient_count: candidates?.length ?? 0 });
+
     let sent = 0, failed = 0;
     for (const c of (candidates ?? []) as { recipient_id: string; invitation_id: string }[]) {
       const outcome = await sendOneRecipient(admin, campaign, survey?.title ?? "", org?.name ?? "", dueDate, c.recipient_id, c.invitation_id);
@@ -269,6 +312,10 @@ Deno.serve(async (req: Request) => {
       }
     }
     await admin.rpc("service_record_audit", { p_organization_id: campaign.organization_id, p_actor_email: actorEmail, p_action_type: "REMINDER_SENT", p_details: { campaign_id: campaignId, sent, failed } });
+    logEvent({
+      event: "campaign_remind_completed", operation: "remind", campaign_id: campaignId, survey_id: campaign.survey_id,
+      result: failed === 0 ? "ok" : "partial_failure", sent, failed, duration_ms: Date.now() - remindStarted,
+    });
     return json({ ok: failed === 0, sent, failed });
   }
 
@@ -286,16 +333,19 @@ async function sendOneRecipient(
   // already discarded whatever token issue_invitations produced earlier -
   // "a token nobody has looked at yet should not exist outside the database"
   // applies just as much to a not-yet-sent campaign as to the Audience page.
+  const started = Date.now();
   const { data: regen, error: regenErr } = await admin.rpc("service_regenerate_invitation", { p_invitation_id: invitationId });
   const row = (regen as { employee_id: string; token: string }[] | null)?.[0];
   if (regenErr || !row) {
     await logFailure(admin, recipientId, regenErr?.message ?? "Could not generate a link for this recipient");
+    logEvent({ event: "recipient_send_failed", campaign_id: campaign.id, recipient_id: recipientId, result: "error", error_code: "INVALID_STATE", duration_ms: Date.now() - started });
     return { ok: false };
   }
 
   const { data: employee } = await admin.from("employees").select("employee_name, email").eq("id", row.employee_id).maybeSingle();
   if (!employee?.email) {
     await logFailure(admin, recipientId, "No email address on file for this employee");
+    logEvent({ event: "recipient_send_failed", campaign_id: campaign.id, recipient_id: recipientId, result: "error", error_code: "VALIDATION_ERROR", duration_ms: Date.now() - started });
     return { ok: false };
   }
 
@@ -323,6 +373,12 @@ async function sendOneRecipient(
     campaign_recipient_id: recipientId,
     event_type: result.ok ? "SENT" : "FAILED",
     detail: result.ok ? null : result.error,
+  });
+
+  logEvent({
+    event: "recipient_send_completed", campaign_id: campaign.id, recipient_id: recipientId,
+    result: result.ok ? "ok" : "provider_error", error_code: result.ok ? null : "EMAIL_PROVIDER_ERROR",
+    duration_ms: Date.now() - started,
   });
 
   return { ok: result.ok };
