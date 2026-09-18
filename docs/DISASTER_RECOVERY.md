@@ -1,6 +1,6 @@
 # Disaster Recovery — Aspire Surveys
 
-**Date:** 2026-09-18
+**Date:** 2026-09-18, reviewed again 2026-09-18 (Backend Hardening Phase A, Round 2)
 **Purpose:** state plainly what recovery capability actually exists and has actually been tested, versus what is assumed but unverified. Nothing here should be read as "we can restore" unless it's marked VERIFIED — an untested assumption about backup/restore is worse than no plan at all, because it fails exactly when it's needed.
 
 ---
@@ -9,12 +9,12 @@
 
 | Capability | Status | Basis |
 |---|---|---|
-| Migrations are version-controlled and replayable | **VERIFIED** | `apps/supabase/migrations/` (24 files, 2026-09-17 onward) applied in order against the schema state in `apps/supabase/schema_snapshot.sql` reproduces current schema; every file's SQL was pulled byte-exact from Supabase's own `supabase_migrations.schema_migrations` table |
-| Legacy S2M data (`public.survey_responses`) has stayed intact throughout this project's work | **VERIFIED** | Row count reconfirmed at exactly 2 after every hardening increment this phase, by direct query |
-| Supabase automated backups are enabled for this project | **UNVERIFIED** | See [Database backups](#database-backups) below — this project is on Supabase's **free** plan, and no tool available in this session can confirm what backup policy is actually active |
-| A database restore has ever been performed or tested | **NOT DONE** | No restore, PITR, or backup-download has been attempted at any point in this project's history |
+| Migrations are version-controlled and replayable | **VERIFIED** | `apps/supabase/migrations/` (31 files, 2026-09-17 onward) applied in order against the schema state in `apps/supabase/schema_snapshot.sql` reproduces current schema; every file's SQL was pulled byte-exact from Supabase's own `supabase_migrations.schema_migrations` table |
+| Legacy S2M data (`public.survey_responses`) has stayed intact throughout this project's work | **VERIFIED** | Row count reconfirmed at exactly 2 after every hardening increment this phase, by direct query, most recently at the end of this round |
+| Supabase automated backups are enabled for this project | **UNVERIFIED — FOUNDER ACTION REQUIRED** | See [Database backups](#database-backups) below — this project is on Supabase's **free** plan, and no tool available in this session can confirm what backup policy is actually active |
+| A database restore has ever been performed or tested | **UNVERIFIED — FOUNDER ACTION REQUIRED** | No restore, PITR, or backup-download has been attempted at any point in this project's history |
 | Frontend (Vercel) rollback works | **UNVERIFIED** | Standard Vercel behavior (redeploy a prior deployment) is assumed to apply, but has not been exercised for this project in this session |
-| A documented, rehearsed recovery runbook exists | **NO** | This document is the first pass at one; it has not been rehearsed end-to-end |
+| A documented, rehearsed recovery runbook exists | **UNVERIFIED — FOUNDER ACTION REQUIRED** | This document is the first pass at one; it has not been rehearsed end-to-end |
 
 ---
 
@@ -35,7 +35,7 @@ Unlike the database's row data, the **shape** of the database and the applicatio
 
 - **Schema**: `apps/supabase/schema_snapshot.sql` (byte-exact as of 2026-09-16) plus every migration in `apps/supabase/migrations/` from `20260917033741` onward (byte-exact, pulled from Supabase's own migration history) together describe the current schema. Rebuilding a fresh Postgres database to today's schema shape (empty of data) is mechanically possible by applying the snapshot's DDL followed by the migrations in order — this has not been executed as a rehearsal, but the pieces exist and are version-controlled.
 - **Application code**: this is a normal git repository on GitHub (`reubenrg/aspire-survey`), branch `admin-platform-v2`. Standard git/GitHub durability applies — this is not a special risk area.
-- **Edge Functions**: `apps/supabase/functions/send-campaign/index.ts` is committed to the repo and was redeployed from that exact file (version 4, 2026-09-18) — the deployed function and the repo file are confirmed in sync as of this writing.
+- **Edge Functions**: `apps/supabase/functions/send-campaign/index.ts` is committed to the repo and was redeployed from that exact file (version 5, 2026-09-18) — the deployed function and the repo file are confirmed in sync as of this writing.
 
 ## What would actually happen today, by failure mode
 
@@ -44,7 +44,7 @@ Stated plainly rather than optimistically:
 - **Someone accidentally drops a table or bad-updates a lot of rows**: recovery depends entirely on whatever Supabase backup/PITR is actually active (unverified — see above). Without a confirmed, tested backup, there is currently **no verified way to recover lost or corrupted response data**.
 - **The Supabase project itself is lost/deleted/becomes inaccessible**: schema and code are recoverable (see above); response *data* is not, unless a backup exists (unverified).
 - **A bad code deploy ships to Vercel**: redeploying a previous Vercel deployment is the standard mechanism and is assumed to work, but has not been exercised in this project.
-- **A bad migration is applied**: none of the 25 migrations applied this phase included a destructive `DROP`/`TRUNCATE` — all were additive or corrective (confirmed by reading each one). This is a project convention (`apps/supabase/MIGRATIONS.md` states it explicitly), not a technical safeguard — a future migration that violates it would not be automatically blocked.
+- **A bad migration is applied**: none of the 31 migrations applied this phase included a destructive `DROP`/`TRUNCATE` — all were additive or corrective (confirmed by reading each one). This is a project convention (`apps/supabase/MIGRATIONS.md` states it explicitly), not a technical safeguard — a future migration that violates it would not be automatically blocked.
 
 ## Recommendation
 
