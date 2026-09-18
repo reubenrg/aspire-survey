@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import type { MappedEmployeeRow } from './csv';
 import { recordAudit } from './reportStore';
+import { toDomainError } from './domainError';
 
 export interface Employee {
   id: string;
@@ -28,8 +29,7 @@ const COLUMNS =
   'id, organization_id, employee_code, employee_name, email, phone, department, designation, location, manager_code, is_active, updated_at';
 
 function fail(error: { code?: string; message: string }, action: string): never {
-  if (error.code === '42501') throw new Error(`You do not have permission to ${action}.`);
-  throw new Error(error.message || `Could not ${action}.`);
+  throw toDomainError(error, action);
 }
 
 /**
@@ -89,14 +89,11 @@ export interface EmployeeInput {
 }
 
 function translateEmployeeError(error: { code?: string; message: string }, action: string): Error {
-  if (error.code === '42501') return new Error(`You do not have permission to ${action}.`);
-  if (error.code === '23505') {
-    return new Error('An employee with this code already exists in this workspace.');
-  }
-  if (error.code === '23514' || error.code === '23502') {
-    return new Error('Employee code and name are required.');
-  }
-  return new Error(error.message || `Could not ${action}.`);
+  return toDomainError(error, action, {
+    '23505': 'An employee with this code already exists in this workspace.',
+    '23514': 'Employee code and name are required.',
+    '23502': 'Employee code and name are required.',
+  });
 }
 
 export async function createEmployee(organizationId: string, input: EmployeeInput): Promise<Employee> {

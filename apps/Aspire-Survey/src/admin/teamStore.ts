@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { Role } from './labels';
+import { toDomainError } from './domainError';
 
 export interface TeamMember {
   id: string;
@@ -13,9 +14,7 @@ export interface TeamMember {
 }
 
 function translate(error: { code?: string; message: string }, action: string): Error {
-  if (error.code === '42501') return new Error(`You do not have permission to ${action}.`);
-  if (error.code === '23505') return new Error('This person is already a team member in this scope.');
-  return new Error(error.message || `Could not ${action}.`);
+  return toDomainError(error, action, { '23505': 'This person is already a team member in this scope.' });
 }
 
 /** Visibility is decided entirely inside list_team_members(): a global viewer+ sees everyone, an org-scoped member sees only their own workspaces. */

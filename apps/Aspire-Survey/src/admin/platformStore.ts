@@ -3,6 +3,9 @@ import { slugify, type Organization } from './adminStore';
 import type { PrivacyMode, SurveyStatus } from './labels';
 import { recordAudit } from './reportStore';
 import { isValidHexColor, isValidLogoUrl } from './brandingValidation';
+import { toDomainError, NotAuthorised } from './domainError';
+
+export { NotAuthorised };
 
 export type { SurveyStatus };
 
@@ -41,24 +44,9 @@ export interface Customer extends Organization {
   updated_at: string;
 }
 
-export class NotAuthorised extends Error {
-  constructor(what: string) {
-    super(`You do not have permission to ${what}.`);
-    this.name = 'NotAuthorised';
-  }
-}
-
 /** Postgres speaks in codes; an admin screen should not. */
 function translate(error: { code?: string; message: string }, action: string): Error {
-  if (error.code === '42501') return new NotAuthorised(action);
-  if (error.code === '23505') return new Error('That name is already taken.');
-  if (error.code === 'PGRST301' || error.code === '401') {
-    return new Error('Your sign-in has expired. Reload the page to sign in again.');
-  }
-  if (error.code === 'PGRST205') {
-    return new Error('That table is not available yet. Its setup SQL may not have been run.');
-  }
-  return new Error(error.message || `Could not ${action}.`);
+  return toDomainError(error, action, { '23505': 'That name is already taken.' });
 }
 
 // ── Overview ───────────────────────────────────────────────────────────────

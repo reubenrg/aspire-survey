@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { InvitationStatus } from './labels';
+import { toDomainError, rpcErrorFrom } from './domainError';
 
 export interface AudienceCounts {
   audience: number;
@@ -30,17 +31,19 @@ export interface AudienceRow {
 }
 
 function fail(error: { code?: string; message: string }, action: string): never {
-  if (error.code === '42501') throw new Error(`You do not have permission to ${action}.`);
-  throw new Error(error.message || `Could not ${action}.`);
+  throw toDomainError(error, action);
 }
 
 export async function fetchAudienceSummary(surveyId: string): Promise<AudienceCounts> {
   const { data, error } = await supabase.rpc('audience_summary', { p_survey_id: surveyId });
   if (error) fail(error, 'load the audience summary');
   const r = data as (AudienceCounts & { error?: string }) | null;
-  if (!r || r.error === 'not_authorised') throw new Error('You do not have permission to view this audience.');
-  if (r.error === 'not_found') throw new Error('This survey could not be found.');
-  return r;
+  const rpcErr = rpcErrorFrom(!r ? 'not_authorised' : r.error, {
+    not_authorised: 'You do not have permission to view this audience.',
+    not_found: 'This survey could not be found.',
+  });
+  if (rpcErr) throw rpcErr;
+  return r as AudienceCounts;
 }
 
 /**

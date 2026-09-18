@@ -3,6 +3,7 @@ import { recordAudit } from './reportStore';
 import { loadBuilderSurvey, autosaveDraft, editingDefinition, StaleWriteError } from './builderStore';
 import { matchesLibrarySearch } from './libraryFilters';
 import type { Question } from '../engine/types';
+import { toDomainError } from './domainError';
 
 export interface LibraryQuestion {
   id: string;
@@ -21,8 +22,7 @@ export interface LibraryQuestion {
 const COLUMNS = 'id, organization_id, definition, category, tags, language, help_text, is_active, created_by, created_at, updated_at';
 
 function fail(error: { code?: string; message: string }, action: string): never {
-  if (error.code === '42501') throw new Error(`You do not have permission to ${action}.`);
-  throw new Error(error.message || `Could not ${action}.`);
+  throw toDomainError(error, action);
 }
 
 export interface LibraryFilters {

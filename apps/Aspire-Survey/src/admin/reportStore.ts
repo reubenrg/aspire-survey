@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { toCsv } from './csvExport';
+import { toDomainError, rpcErrorFrom } from './domainError';
 
 export interface ReportStats {
   total: number;
@@ -33,15 +34,14 @@ export interface AuditEntry {
 
 export async function fetchStats(slug: string): Promise<ReportStats | null> {
   const { data, error } = await supabase.rpc('survey_report_stats', { p_slug: slug });
-  if (error) throw new Error(error.message);
+  if (error) throw toDomainError(error, 'load this report');
   if (!data) return null;
   const stats = data as ReportStats;
-  if (stats.error === 'not_authorised') {
-    throw new Error('You need the analyst role or higher to see results for this survey.');
-  }
-  if (stats.error === 'no_table') {
-    throw new Error('This survey has no response table yet. Run its generated SQL first.');
-  }
+  const err = rpcErrorFrom(stats.error, {
+    not_authorised: 'You need the analyst role or higher to see results for this survey.',
+    no_table: 'This survey has no response table yet. Run its generated SQL first.',
+  });
+  if (err) throw err;
   return stats;
 }
 
@@ -89,10 +89,7 @@ export async function fetchAuditLog(organizationId: string | null, limit = 100):
     .limit(limit);
   if (organizationId) q = q.eq('organization_id', organizationId);
   const { data, error } = await q;
-  if (error) {
-    if (error.code === '42501') throw new Error('Only an owner can read the audit log.');
-    throw new Error(error.message);
-  }
+  if (error) throw toDomainError(error, 'read the audit log', { '42501': 'Only an owner can read the audit log.' });
   return (data ?? []) as AuditEntry[];
 }
 
@@ -124,10 +121,7 @@ export async function fetchAuditPage(
   if (filters.dateFrom) q = q.gte('created_at', filters.dateFrom);
   if (filters.dateTo) q = q.lte('created_at', filters.dateTo);
   const { data, error, count } = await q;
-  if (error) {
-    if (error.code === '42501') throw new Error('Only an owner can read the audit log.');
-    throw new Error(error.message);
-  }
+  if (error) throw toDomainError(error, 'read the audit log', { '42501': 'Only an owner can read the audit log.' });
   return { rows: (data ?? []) as AuditEntry[], total: count ?? 0 };
 }
 
@@ -160,10 +154,7 @@ export async function exportResponsesCsv(
 ): Promise<{ csv: string; rows: number }> {
   const { data, error } = await supabase.from(tableName).select('*').order('submitted_at').limit(EXPORT_ROW_CAP);
   if (error) {
-    if (error.code === '42501') {
-      throw new Error('You need the analyst role or higher to export responses.');
-    }
-    throw new Error(error.message);
+    throw toDomainError(error, 'export responses', { '42501': 'You need the analyst role or higher to export responses.' });
   }
 
   let rows = (data ?? []) as Record<string, unknown>[];
@@ -210,8 +201,7 @@ export async function setClosed(
     .update({ closed_at: closed ? new Date().toISOString() : null })
     .eq('slug', slug);
   if (error) {
-    if (error.code === '42501') throw new Error('You need the editor role or higher to close a survey.');
-    throw new Error(error.message);
+    throw toDomainError(error, 'close this survey', { '42501': 'You need the editor role or higher to close a survey.' });
   }
   await recordAudit(organizationId, closed ? 'SURVEY_CLOSED' : 'SURVEY_REOPENED', { survey: slug });
 }

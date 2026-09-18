@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import type { InvitationStatus, PrivacyMode } from './labels';
 import type { CampaignEmployee } from './campaignEligibility';
 import { recordAudit } from './reportStore';
+import { toDomainError } from './domainError';
 
 export type CampaignStatus =
   | 'DRAFT' | 'TESTED' | 'SCHEDULED' | 'SENDING' | 'SENT' | 'PARTIALLY_FAILED' | 'COMPLETED' | 'CANCELLED';
@@ -48,8 +49,7 @@ export interface CampaignRecipientRow {
 const CAMPAIGN_COLUMNS = 'id, survey_id, survey_version, organization_id, privacy_mode, status, sender_name, sender_email, reply_to, subject, preview_text, body_text, cta_label, due_date, scheduled_at, sent_at, created_by, created_at, updated_at';
 
 function fail(error: { code?: string; message: string }, action: string): never {
-  if (error.code === '42501') throw new Error(`You do not have permission to ${action}.`);
-  throw new Error(error.message || `Could not ${action}.`);
+  throw toDomainError(error, action);
 }
 
 /** The survey's full invitation list, with email attached - the one thing fetchAudience() (Audience page) doesn't need and so doesn't select. */

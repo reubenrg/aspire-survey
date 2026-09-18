@@ -3,6 +3,7 @@ import { tableNameFor } from '../engine/definition';
 import type { SurveyDefinition } from '../engine/types';
 import { atLeast, type PrivacyMode, type Role } from './labels';
 import { duplicateSlug, duplicateTitle } from './duplication';
+import { toDomainError } from './domainError';
 
 // Role and atLeast are pure (no Supabase dependency) and live in labels.ts so
 // they can be unit tested without a database; re-exported here since this is
@@ -61,10 +62,7 @@ const SURVEY_COLUMNS =
   'id, slug, title, definition, table_name, published, organization_id, current_version, closed_at, archived_at, privacy_mode, category, purpose, created_by, updated_at';
 
 function fail(error: { code?: string; message: string }, action: string): never {
-  if (error.code === '42501') {
-    throw new Error(`You do not have permission to ${action}.`);
-  }
-  throw new Error(error.message);
+  throw toDomainError(error, action);
 }
 
 // ── roles ──────────────────────────────────────────────────────────────────

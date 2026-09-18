@@ -4,6 +4,7 @@ import { validateAdditive, migrationForNewColumns, type AdditiveIssue } from '..
 import type { SurveyDefinition } from '../engine/types';
 import type { PrivacyMode } from './labels';
 import { assertNotLegacyReference } from './legacySurvey';
+import { toDomainError } from './domainError';
 
 export interface BuilderSurvey {
   id: string;
@@ -29,8 +30,7 @@ const COLUMNS =
   'id, slug, title, organization_id, privacy_mode, category, published, closed_at, archived_at, current_version, definition, draft_definition, draft_updated_at, draft_updated_by, updated_at';
 
 function fail(error: { code?: string; message: string }, action: string): never {
-  if (error.code === '42501') throw new Error(`You do not have permission to ${action}.`);
-  throw new Error(error.message || `Could not ${action}.`);
+  throw toDomainError(error, action);
 }
 
 export async function loadBuilderSurvey(slug: string): Promise<BuilderSurvey | null> {

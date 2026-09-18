@@ -4,6 +4,7 @@ import { createSurveyDraft, slugify, type SurveyRow } from './adminStore';
 import { duplicateTitle, duplicateSlug } from './duplication';
 import type { PrivacyMode } from './labels';
 import type { SurveyDefinition } from '../engine/types';
+import { toDomainError } from './domainError';
 
 export interface SurveyTemplate {
   id: string;
@@ -22,8 +23,7 @@ export interface SurveyTemplate {
 const COLUMNS = 'id, organization_id, name, description, category, definition, default_privacy_mode, is_active, created_by, created_at, updated_at';
 
 function fail(error: { code?: string; message: string }, action: string): never {
-  if (error.code === '42501') throw new Error(`You do not have permission to ${action}.`);
-  throw new Error(error.message || `Could not ${action}.`);
+  throw toDomainError(error, action);
 }
 
 export async function fetchTemplates(activeOnly = true): Promise<SurveyTemplate[]> {

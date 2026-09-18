@@ -1,26 +1,22 @@
 import { supabase } from '../lib/supabase';
 import { recordAudit } from './reportStore';
 import { toCsv } from './csvExport';
+import { toDomainError, rpcErrorFrom, NotAuthorised } from './domainError';
 
-export class NotAuthorised extends Error {
-  constructor(what: string) {
-    super(`You do not have permission to ${what}.`);
-    this.name = 'NotAuthorised';
-  }
-}
+export { NotAuthorised };
 
 function translate(error: { code?: string; message: string }, action: string): Error {
-  if (error.code === '42501') return new NotAuthorised(action);
-  return new Error(error.message || `Could not ${action}.`);
+  return toDomainError(error, action);
 }
 
 /** Every RPC here returns {error: '...'} on the failure paths a database function can reach; this turns those into the same exceptions a REST-level failure would throw. */
 function raiseIfError(payload: { error?: string } | null | undefined, action: string): void {
-  if (!payload?.error) return;
-  if (payload.error === 'not_authorised') throw new NotAuthorised(action);
-  if (payload.error === 'not_found') throw new Error('This survey could not be found.');
-  if (payload.error === 'no_table') throw new Error('This survey has no response table yet.');
-  throw new Error(`Could not ${action}.`);
+  const err = rpcErrorFrom(payload?.error, {
+    not_authorised: `You do not have permission to ${action}.`,
+    not_found: 'This survey could not be found.',
+    no_table: 'This survey has no response table yet.',
+  });
+  if (err) throw err;
 }
 
 // ── Overview (Part 5) ────────────────────────────────────────────────────

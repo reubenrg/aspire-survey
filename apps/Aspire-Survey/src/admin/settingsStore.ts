@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { recordAudit } from './reportStore';
 import { validateConfidentialityThreshold } from './thresholdValidation';
+import { toDomainError } from './domainError';
 
 export interface PlatformSettings {
   platform_name: string;
@@ -19,8 +20,7 @@ const DEFAULTS: PlatformSettings = {
 export const CONFIDENTIALITY_THRESHOLD_FLOOR = 5;
 
 function translate(error: { code?: string; message: string }, action: string): Error {
-  if (error.code === '42501') return new Error(`You do not have permission to ${action}.`);
-  return new Error(error.message || `Could not ${action}.`);
+  return toDomainError(error, action);
 }
 
 export async function fetchSettings(): Promise<PlatformSettings> {
