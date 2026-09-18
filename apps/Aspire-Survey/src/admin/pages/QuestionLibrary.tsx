@@ -79,7 +79,9 @@ export default function QuestionLibrary() {
         />
       ) : (
         <DataTable head={['Question', 'Type', 'Category', 'Tags', 'Language', 'Status', '']}>
-          {rows.map(r => (
+          {rows.map(r => {
+            const canManage = session.can(r.organization_id, 'editor');
+            return (
             <tr key={r.id} className={`transition-colors hover:bg-muted/40 ${r.is_active ? '' : 'opacity-60'}`}>
               <Td className="max-w-xs truncate font-medium text-foreground">{r.definition.label || <em className="text-muted-foreground">Untitled</em>}</Td>
               <Td className="text-muted-foreground">{QUESTION_TYPE_LABELS[r.definition.type]}</Td>
@@ -97,17 +99,18 @@ export default function QuestionLibrary() {
                 <div className="flex justify-end">
                   <RowMenu items={[
                     { label: 'View / Edit', onSelect: () => setEditing(r) },
-                    { label: 'Duplicate', onSelect: async () => { try { await duplicateLibraryQuestion(r); await load(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } } },
+                    ...(canManage ? [{ label: 'Duplicate', onSelect: async () => { try { await duplicateLibraryQuestion(r); await load(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } } }] : []),
                     { label: 'Add to survey', onSelect: () => setAddingTo(r) },
-                    {
+                    ...(canManage ? [{
                       label: r.is_active ? 'Deactivate' : 'Reactivate', destructive: r.is_active,
                       onSelect: async () => { try { await setLibraryQuestionActive(r.id, r.organization_id, !r.is_active); await load(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } },
-                    },
+                    }] : []),
                   ]} />
                 </div>
               </Td>
             </tr>
-          ))}
+            );
+          })}
         </DataTable>
       )}
 
