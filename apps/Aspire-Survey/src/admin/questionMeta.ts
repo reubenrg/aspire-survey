@@ -5,6 +5,7 @@
  * entry per row, since each row is its own database column.
  */
 import { defaultColumn, matrixColumn } from '../engine/definition.ts';
+import { stripPipes } from '../engine/logic.ts';
 import type { Question, SurveyDefinition } from '../engine/types.ts';
 
 export type AnalysisKind =
@@ -51,26 +52,26 @@ function columnsForQuestion(q: Question, sectionTitle: string): ColumnMeta[] {
   switch (q.type) {
     case 'radio':
     case 'select':
-      return [{ column: q.column || defaultColumn(q.id), label: q.label, kind: 'choice', questionId: q.id, sectionTitle, options: q.options }];
+      return [{ column: q.column || defaultColumn(q.id), label: stripPipes(q.label), kind: 'choice', questionId: q.id, sectionTitle, options: q.options }];
     case 'checkbox':
-      return [{ column: q.column || defaultColumn(q.id), label: q.label, kind: 'multiselect', questionId: q.id, sectionTitle, options: q.options }];
+      return [{ column: q.column || defaultColumn(q.id), label: stripPipes(q.label), kind: 'multiselect', questionId: q.id, sectionTitle, options: q.options }];
     case 'yesno':
-      return [{ column: q.column || defaultColumn(q.id), label: q.label, kind: 'choice', questionId: q.id, sectionTitle, options: ['Yes', 'No'], type: q.type }];
+      return [{ column: q.column || defaultColumn(q.id), label: stripPipes(q.label), kind: 'choice', questionId: q.id, sectionTitle, options: ['Yes', 'No'], type: q.type }];
     case 'ranking':
-      return [{ column: q.column || defaultColumn(q.id), label: q.label, kind: 'ranking', questionId: q.id, sectionTitle, options: q.options, type: q.type }];
+      return [{ column: q.column || defaultColumn(q.id), label: stripPipes(q.label), kind: 'ranking', questionId: q.id, sectionTitle, options: q.options, type: q.type }];
     case 'rating':
-      return [{ column: q.column || defaultColumn(q.id), label: q.label, kind: 'rating', questionId: q.id, sectionTitle, max: q.max ?? 5, type: q.type }];
+      return [{ column: q.column || defaultColumn(q.id), label: stripPipes(q.label), kind: 'rating', questionId: q.id, sectionTitle, max: q.max ?? 5, type: q.type }];
     case 'nps':
-      return [{ column: q.column || defaultColumn(q.id), label: q.label, kind: 'nps', questionId: q.id, sectionTitle, type: q.type }];
+      return [{ column: q.column || defaultColumn(q.id), label: stripPipes(q.label), kind: 'nps', questionId: q.id, sectionTitle, type: q.type }];
     case 'number':
     case 'slider':
-      return [{ column: q.column || defaultColumn(q.id), label: q.label, kind: 'numeric', questionId: q.id, sectionTitle, type: q.type }];
+      return [{ column: q.column || defaultColumn(q.id), label: stripPipes(q.label), kind: 'numeric', questionId: q.id, sectionTitle, type: q.type }];
     case 'email':
-      return [{ column: q.column || defaultColumn(q.id), label: q.label, kind: 'identifier', questionId: q.id, sectionTitle, type: q.type }];
+      return [{ column: q.column || defaultColumn(q.id), label: stripPipes(q.label), kind: 'identifier', questionId: q.id, sectionTitle, type: q.type }];
     case 'date':
     case 'text':
     case 'textarea':
-      return [{ column: q.column || defaultColumn(q.id), label: q.label, kind: 'text', questionId: q.id, sectionTitle, type: q.type }];
+      return [{ column: q.column || defaultColumn(q.id), label: stripPipes(q.label), kind: 'text', questionId: q.id, sectionTitle, type: q.type }];
     case 'matrix': {
       // Every rowsByAnswer variant can appear in real data (different
       // respondents saw different rows), so the label list is the union -

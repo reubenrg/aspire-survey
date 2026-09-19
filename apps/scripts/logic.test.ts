@@ -5,7 +5,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluate, isEmptyAnswer, normalizeLogic, pipe, pipedQuestionIds } from '../Aspire-Survey/src/engine/logic.ts';
+import { evaluate, isEmptyAnswer, normalizeLogic, pipe, pipedQuestionIds, stripPipes } from '../Aspire-Survey/src/engine/logic.ts';
 import {
   buildRow, columnsFor, firstSectionIndex, nextSectionIndex, sectionPath, sectionShown,
 } from '../Aspire-Survey/src/engine/definition.ts';
@@ -104,6 +104,8 @@ test('piping substitutes an earlier answer, uses a fallback, and joins multi-sel
   assert.equal(pipe('You picked {{answer:c}}.', { c: ['A', 'B'] }), 'You picked A, B.');
   assert.equal(pipe('No placeholders', { name: 'x' }), 'No placeholders');
   assert.deepEqual(pipedQuestionIds('{{answer:a}} and {{ answer:b|x }}'), ['a', 'b']);
+  assert.equal(stripPipes('You rated us {{answer:csat|-}} out of 5'), 'You rated us [earlier answer] out of 5');
+  assert.equal(stripPipes('plain'), 'plain');
 });
 
 // ── Routing ──────────────────────────────────────────────────────────────

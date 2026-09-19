@@ -108,6 +108,15 @@ export function pipe(text: string, answers: Answers): string {
   });
 }
 
+/**
+ * A label with its piping placeholders shown as a neutral blank, for places with
+ * no respondent (analytics, exports, the response table) where "{{answer:csat|-}}"
+ * would just be noise.
+ */
+export function stripPipes(text: string): string {
+  return text.includes('{{') ? text.replace(PIPE, '[earlier answer]') : text;
+}
+
 /** Question ids a string pipes in, for validation. */
 export function pipedQuestionIds(text: string | undefined): string[] {
   if (!text || !text.includes('{{')) return [];
