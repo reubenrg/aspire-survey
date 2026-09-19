@@ -135,12 +135,14 @@ test('converting to a choice type keeps existing options; converting away drops 
   assert.equal('options' in backToText, false);
 });
 
-test('only text, long text, dropdown and single-choice questions have a string answer a condition can target', () => {
-  assert.equal(hasStringAnswer('text'), true);
-  assert.equal(hasStringAnswer('textarea'), true);
-  assert.equal(hasStringAnswer('select'), true);
-  assert.equal(hasStringAnswer('radio'), true);
-  assert.equal(hasStringAnswer('checkbox'), false);
+// Widened deliberately when the rule engine gained operators (contains,
+// greater-than, answered...): every type except a matrix now has a single
+// comparable answer. A matrix answers many things at once and still cannot be
+// a condition's source.
+test('every question type except a matrix can be the source of a condition', () => {
+  for (const type of ['text', 'textarea', 'select', 'radio', 'checkbox', 'rating', 'nps', 'yesno', 'number', 'date', 'email', 'slider', 'ranking'] as const) {
+    assert.equal(hasStringAnswer(type), true, type);
+  }
   assert.equal(hasStringAnswer('matrix'), false);
 });
 
@@ -203,12 +205,17 @@ test('a condition checking for a deleted option on its source question is flagge
   assert.ok(issues.some(i => i.subject === 'q2' && /no longer exist/.test(i.message)));
 });
 
-test('a condition depending on a checkbox or matrix question (no single string answer) is flagged', () => {
+test('a condition depending on a matrix question is flagged, but a checkbox source is now valid', () => {
   const def = baseDef();
-  def.sections[0].questions[1] = { id: 'q1', type: 'checkbox', label: 'Pick', options: ['A', 'B'] };
+  def.sections[0].questions[1] = { id: 'q1', type: 'matrix', label: 'Grid', rows: ['r'], scale: ['a'], columnPrefix: 'q1' };
   def.sections[1].questions.push({ id: 'q2', type: 'text', label: 'Depends', showIf: { questionId: 'q1', equals: ['A'] } });
   const issues = validateSurveyStructure(def);
-  assert.ok(issues.some(i => i.subject === 'q2' && /Conditions can only depend on/.test(i.message)));
+  assert.ok(issues.some(i => i.subject === 'q2' && /Conditions cannot read a matrix/.test(i.message)));
+
+  const ok = baseDef();
+  ok.sections[0].questions[1] = { id: 'q1', type: 'checkbox', label: 'Pick', options: ['A', 'B'] };
+  ok.sections[1].questions.push({ id: 'q2', type: 'text', label: 'Depends', showIf: { questionId: 'q1', equals: ['A'] } });
+  assert.equal(validateSurveyStructure(ok).some(i => i.subject === 'q2'), false);
 });
 
 test('a malformed matrix (no rows, no scale, or no column prefix) is flagged', () => {

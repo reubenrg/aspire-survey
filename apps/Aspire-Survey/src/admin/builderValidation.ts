@@ -6,7 +6,9 @@
  * it has ever been published. Publish runs both.
  */
 import { hasOptions, hasStringAnswer } from '../engine/questionFactory.ts';
-import type { Question, Section, SurveyDefinition } from '../engine/types.ts';
+import { normalizeLogic, pipedQuestionIds } from '../engine/logic.ts';
+import { safePattern } from '../engine/validation.ts';
+import type { Logic, Question, Section, SurveyDefinition } from '../engine/types.ts';
 
 export interface BuilderIssue {
   severity: 'error' | 'warning';
@@ -83,53 +85,163 @@ export function validateSurveyStructure(def: SurveyDefinition): BuilderIssue[] {
         }
       }
 
+      issues.push(...validateTypeSettings(q));
+
       if (q.showIf) {
-        issues.push(...validateCondition(q, questionsById, positionById));
+        issues.push(...validateLogic(q.id, q.label || q.id, q.showIf, positionById.get(q.id)!, questionsById, positionById));
       }
+      for (const ref of pipedQuestionIds(`${q.label} ${q.hint ?? ''}`)) {
+        const src = questionsById.get(ref);
+        if (!src) {
+          issues.push({ severity: 'error', subject: q.id, message: `"${q.label || q.id}" pipes in an answer from "${ref}", which does not exist.` });
+        } else if (positionById.get(ref)! >= positionById.get(q.id)!) {
+          issues.push({ severity: 'error', subject: q.id, message: `"${q.label || q.id}" pipes in "${src.label || ref}", which comes after it. A piped answer must come from an earlier question.` });
+        }
+      }
+    }
+  }
+
+  // Page-level logic: a page's own display rule may read anything before the
+  // page; a skip jump may also read the page's own questions (it runs after
+  // they are answered) and may only lead forward.
+  let cursor = 0;
+  def.sections.forEach((section, si) => {
+    const start = cursor;
+    cursor += section.questions.length;
+    const end = cursor;
+    const name = `Page "${section.title || section.id}"`;
+
+    if (section.showIf) {
+      issues.push(...validateLogic(section.id, name, section.showIf, start, questionsById, positionById));
+    }
+    (section.jumps ?? []).forEach((jump, ji) => {
+      issues.push(...validateLogic(section.id, `${name} skip rule ${ji + 1}`, jump.when, end, questionsById, positionById));
+      if (jump.to !== 'end') {
+        const target = def.sections.findIndex(x => x.id === jump.to);
+        if (target < 0) {
+          issues.push({ severity: 'error', subject: section.id, message: `${name} skip rule ${ji + 1} goes to a page that no longer exists.` });
+        } else if (target <= si) {
+          issues.push({ severity: 'error', subject: section.id, message: `${name} skip rule ${ji + 1} goes backwards. Skip rules can only jump forward or end the survey.` });
+        }
+      }
+    });
+  });
+
+  for (const ref of pipedQuestionIds(def.thankYou.body)) {
+    if (!questionsById.has(ref)) {
+      issues.push({ severity: 'error', subject: 'survey', message: `The thank-you message pipes in an answer from "${ref}", which does not exist.` });
     }
   }
 
   return issues;
 }
 
-function validateCondition(
-  q: Question,
+/** Checks each type's own settings, so a nonsense limit is caught before a respondent hits it. */
+function validateTypeSettings(q: Question): BuilderIssue[] {
+  const out: BuilderIssue[] = [];
+  const label = q.label || q.id;
+  const err = (message: string) => out.push({ severity: 'error', subject: q.id, message });
+
+  switch (q.type) {
+    case 'text':
+    case 'textarea':
+      if (q.minLength !== undefined && q.maxLength !== undefined && q.minLength > q.maxLength) {
+        err(`"${label}" has a minimum length above its maximum.`);
+      }
+      if (q.type === 'text' && q.pattern && !safePattern(q.pattern)) {
+        err(`"${label}" has a format pattern that is not a valid regular expression.`);
+      }
+      break;
+    case 'number':
+      if (q.min !== undefined && q.max !== undefined && q.min > q.max) err(`"${label}" has a minimum above its maximum.`);
+      break;
+    case 'date':
+      if (q.min && q.max && q.min > q.max) err(`"${label}" has an earliest date after its latest date.`);
+      break;
+    case 'rating':
+      if (q.max !== undefined && (!Number.isInteger(q.max) || q.max < 3 || q.max > 10)) err(`"${label}" must have a top rating between 3 and 10.`);
+      break;
+    case 'slider': {
+      const lo = q.min ?? 0;
+      const hi = q.max ?? 100;
+      if (lo >= hi) err(`"${label}" needs a maximum above its minimum.`);
+      if (q.step !== undefined && !(q.step > 0)) err(`"${label}" needs a step above zero.`);
+      break;
+    }
+    case 'checkbox':
+      if (q.minSelections !== undefined) {
+        const n = q.options.filter(o => o.trim() !== '').length;
+        if (!Number.isInteger(q.minSelections) || q.minSelections < 0) err(`"${label}" has an invalid minimum selection count.`);
+        else if (q.minSelections > n) err(`"${label}" needs at least ${q.minSelections} selections but only has ${n} option${n === 1 ? '' : 's'}.`);
+        else if (q.maxSelections !== undefined && q.minSelections > q.maxSelections) err(`"${label}" has a minimum selection count above its maximum.`);
+      }
+      break;
+    case 'ranking':
+      if (q.options.filter(o => o.trim() !== '').length < 2) err(`"${label}" needs at least two options to rank.`);
+      break;
+    default:
+      break;
+  }
+  return out;
+}
+
+const VALUE_OPS = new Set(['equals', 'notEquals', 'contains', 'notContains', 'gt', 'gte', 'lt', 'lte']);
+const COMPARE_OPS = new Set(['gt', 'gte', 'lt', 'lte']);
+const COMPARABLE_TYPES = new Set(['number', 'rating', 'nps', 'slider', 'date']);
+
+/**
+ * `limit` is the reading-order position a source must be BEFORE: a question's
+ * own position, a page's first question, or one past a page's last question.
+ */
+function validateLogic(
+  subject: string,
+  label: string,
+  logic: Logic,
+  limit: number,
   questionsById: Map<string, Question>,
   positionById: Map<string, number>,
 ): BuilderIssue[] {
-  const cond = q.showIf!;
-  const label = q.label || q.id;
-
-  if (cond.questionId === q.id) {
-    return [{ severity: 'error', subject: q.id, message: `"${label}" is set to depend on itself.` }];
-  }
-
-  const source = questionsById.get(cond.questionId);
-  if (!source) {
-    return [{ severity: 'error', subject: q.id, message: `"${label}" depends on a question that no longer exists.` }];
-  }
-
-  const myPos = positionById.get(q.id)!;
-  const sourcePos = positionById.get(source.id)!;
-  if (sourcePos >= myPos) {
-    return [{ severity: 'error', subject: q.id, message: `"${label}" depends on "${source.label || source.id}", which comes after it. A condition can only depend on an earlier question.` }];
-  }
-
-  if (!hasStringAnswer(source.type)) {
-    return [{ severity: 'error', subject: q.id, message: `"${label}" depends on "${source.label || source.id}", a ${source.type} question. Conditions can only depend on a short text, long text, dropdown or single-choice question.` }];
-  }
-
   const issues: BuilderIssue[] = [];
-  if (cond.equals.length === 0) {
-    issues.push({ severity: 'error', subject: q.id, message: `"${label}" has no value to match yet.` });
+  const err = (message: string) => issues.push({ severity: 'error', subject, message });
+  const { rules } = normalizeLogic(logic);
+
+  if (rules.length === 0) {
+    err(`"${label}" has a condition with no rules.`);
+    return issues;
   }
-  if (hasOptions(source)) {
-    const missing = cond.equals.filter(v => !source.options.includes(v));
-    if (missing.length > 0) {
-      issues.push({
-        severity: 'error', subject: q.id,
-        message: `"${label}" checks for ${missing.length === 1 ? 'an option' : 'options'} ${missing.map(v => `"${v}"`).join(', ')} on "${source.label || source.id}" that no longer exist${missing.length === 1 ? 's' : ''}.`,
-      });
+
+  for (const rule of rules) {
+    if (rule.questionId === subject) { err(`"${label}" is set to depend on itself.`); continue; }
+    const source = questionsById.get(rule.questionId);
+    if (!source) { err(`"${label}" depends on a question that no longer exists.`); continue; }
+    if (positionById.get(source.id)! >= limit) {
+      err(`"${label}" depends on "${source.label || source.id}", which comes after it. A condition can only depend on an earlier question.`);
+      continue;
+    }
+    if (!hasStringAnswer(source.type)) {
+      err(`"${label}" depends on "${source.label || source.id}", a matrix. Conditions cannot read a matrix.`);
+      continue;
+    }
+
+    const values = (rule.value ?? []).filter(v => v.trim() !== '');
+    if (VALUE_OPS.has(rule.op) && values.length === 0) {
+      err(`"${label}" has a rule on "${source.label || source.id}" with no value to compare against yet.`);
+      continue;
+    }
+    if (COMPARE_OPS.has(rule.op)) {
+      if (!COMPARABLE_TYPES.has(source.type)) {
+        err(`"${label}" compares "${source.label || source.id}" with a greater-than / less-than rule, but that question is not a number, rating, score, slider or date.`);
+      } else if (source.type !== 'date' && !Number.isFinite(Number(values[0]))) {
+        err(`"${label}" compares "${source.label || source.id}" against "${values[0]}", which is not a number.`);
+      }
+    }
+
+    const optionList = hasOptions(source) ? source.options : source.type === 'yesno' ? ['Yes', 'No'] : null;
+    if (optionList && (rule.op === 'equals' || rule.op === 'notEquals' || rule.op === 'contains' || rule.op === 'notContains')) {
+      const missing = values.filter(v => !optionList.includes(v));
+      if (missing.length > 0) {
+        err(`"${label}" checks for ${missing.length === 1 ? 'an option' : 'options'} ${missing.map(v => `"${v}"`).join(', ')} on "${source.label || source.id}" that no longer exist${missing.length === 1 ? 's' : ''}.`);
+      }
     }
   }
   return issues;

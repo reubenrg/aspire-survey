@@ -7,7 +7,21 @@
 import { defaultColumn, matrixColumn } from '../engine/definition.ts';
 import type { Question, SurveyDefinition } from '../engine/types.ts';
 
-export type AnalysisKind = 'choice' | 'multiselect' | 'matrix-row' | 'text';
+export type AnalysisKind =
+  | 'choice'
+  | 'multiselect'
+  | 'matrix-row'
+  | 'text'
+  /** number, slider: a distribution and summary statistics. */
+  | 'numeric'
+  /** 1..max rating: mean plus a distribution over the scale. */
+  | 'rating'
+  /** 0..10 Net Promoter Score: promoters, passives, detractors. */
+  | 'nps'
+  /** Ordered text[]: average position per option. */
+  | 'ranking'
+  /** Answers that identify a person (email). Never aggregated or listed. */
+  | 'identifier';
 
 export interface ColumnMeta {
   column: string;
@@ -17,6 +31,10 @@ export interface ColumnMeta {
   sectionTitle: string;
   options?: string[];
   scale?: string[]; // matrix-row only
+  /** rating: the top of the scale. */
+  max?: number;
+  /** The question type, for anything that needs more than `kind`. */
+  type?: Question['type'];
 }
 
 export function questionColumns(def: SurveyDefinition): ColumnMeta[] {
@@ -36,9 +54,23 @@ function columnsForQuestion(q: Question, sectionTitle: string): ColumnMeta[] {
       return [{ column: q.column || defaultColumn(q.id), label: q.label, kind: 'choice', questionId: q.id, sectionTitle, options: q.options }];
     case 'checkbox':
       return [{ column: q.column || defaultColumn(q.id), label: q.label, kind: 'multiselect', questionId: q.id, sectionTitle, options: q.options }];
+    case 'yesno':
+      return [{ column: q.column || defaultColumn(q.id), label: q.label, kind: 'choice', questionId: q.id, sectionTitle, options: ['Yes', 'No'], type: q.type }];
+    case 'ranking':
+      return [{ column: q.column || defaultColumn(q.id), label: q.label, kind: 'ranking', questionId: q.id, sectionTitle, options: q.options, type: q.type }];
+    case 'rating':
+      return [{ column: q.column || defaultColumn(q.id), label: q.label, kind: 'rating', questionId: q.id, sectionTitle, max: q.max ?? 5, type: q.type }];
+    case 'nps':
+      return [{ column: q.column || defaultColumn(q.id), label: q.label, kind: 'nps', questionId: q.id, sectionTitle, type: q.type }];
+    case 'number':
+    case 'slider':
+      return [{ column: q.column || defaultColumn(q.id), label: q.label, kind: 'numeric', questionId: q.id, sectionTitle, type: q.type }];
+    case 'email':
+      return [{ column: q.column || defaultColumn(q.id), label: q.label, kind: 'identifier', questionId: q.id, sectionTitle, type: q.type }];
+    case 'date':
     case 'text':
     case 'textarea':
-      return [{ column: q.column || defaultColumn(q.id), label: q.label, kind: 'text', questionId: q.id, sectionTitle }];
+      return [{ column: q.column || defaultColumn(q.id), label: q.label, kind: 'text', questionId: q.id, sectionTitle, type: q.type }];
     case 'matrix': {
       // Every rowsByAnswer variant can appear in real data (different
       // respondents saw different rows), so the label list is the union -

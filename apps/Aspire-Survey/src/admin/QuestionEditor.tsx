@@ -3,19 +3,9 @@ import { cn } from '../lib/utils';
 import { Button } from '../components/ui/button';
 import type { Question, QuestionType, Section } from '../engine/types';
 import { defaultColumn } from '../engine/definition';
-import { convertQuestion, newQuestion as newQuestionOfType } from '../engine/questionFactory';
-
-// Kept exactly as this editor has always shown them - the shared factory's
-// labels (used by Builder V2's picker) read slightly differently, and this
-// screen's wording is unchanged deliberately during the transition.
-const TYPE_LABELS: Record<QuestionType, string> = {
-  text: 'Short text',
-  textarea: 'Long text',
-  select: 'Dropdown',
-  radio: 'Choose one',
-  checkbox: 'Choose several',
-  matrix: 'Rating grid',
-};
+import { QUESTION_TYPE_LABELS as TYPE_LABELS, convertQuestion, newQuestion as newQuestionOfType } from '../engine/questionFactory';
+import TypeSettings from './builder/TypeSettings';
+import { LogicEditor } from './builder/ConditionEditor';
 
 interface Props {
   question: Question;
@@ -88,86 +78,16 @@ export default function QuestionEditor({
             Required
           </label>
 
-          {(q.type === 'select' || q.type === 'radio' || q.type === 'checkbox') && (
-            <Field label="Options, one per line">
-              <textarea
-                rows={Math.min(10, Math.max(3, q.options.length + 1))}
-                value={q.options.join('\n')}
-                onChange={e => set({ options: e.target.value.split('\n') } as Partial<Question>)}
-                className={cn(inputCls, 'font-mono text-xs')}
-              />
-            </Field>
-          )}
+          <TypeSettings question={q} readOnly={false} onChange={onChange} />
 
-          {q.type === 'checkbox' && (
-            <Field label="Maximum selections" hint="Leave empty for no limit.">
-              <input
-                type="number" min={1}
-                value={q.maxSelections ?? ''}
-                onChange={e => set({ maxSelections: e.target.value ? Number(e.target.value) : undefined } as Partial<Question>)}
-                className={inputCls}
-              />
-            </Field>
-          )}
-
-          {(q.type === 'radio' || q.type === 'checkbox') && q.options.includes('Other') && (
-            <Field label="Column for the Other free text" hint="Needed for the box that appears when someone picks Other.">
-              <input
-                value={q.otherColumn ?? ''}
-                placeholder={`${defaultColumn(q.id)}_other`}
-                onChange={e => set({ otherColumn: e.target.value || undefined } as Partial<Question>)}
-                className={cn(inputCls, 'font-mono text-xs')}
-              />
-            </Field>
-          )}
-
-          {q.type === 'matrix' && (
-            <>
-              <Field label="Statements, one per line" hint="Order matters: each becomes a numbered column. Adding to the end is safe; reordering after responses exist changes what existing columns mean.">
-                <textarea rows={6} value={q.rows.join('\n')}
-                  onChange={e => set({ rows: e.target.value.split('\n') } as Partial<Question>)}
-                  className={cn(inputCls, 'font-mono text-xs')} />
-              </Field>
-              <Field label="Scale, one per line" hint="Left to right across the grid.">
-                <textarea rows={5} value={q.scale.join('\n')}
-                  onChange={e => set({ scale: e.target.value.split('\n') } as Partial<Question>)}
-                  className={cn(inputCls, 'font-mono text-xs')} />
-              </Field>
-              <Field label="Column prefix">
-                <input value={q.columnPrefix}
-                  onChange={e => set({ columnPrefix: e.target.value } as Partial<Question>)}
-                  className={cn(inputCls, 'font-mono text-xs')} />
-              </Field>
-            </>
-          )}
-
-          <div className="rounded-md border border-border/60 bg-muted/30 p-3">
-            <p className="mb-2 text-xs font-medium text-foreground">Show only when…</p>
-            {earlier.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No earlier question to depend on.</p>
-            ) : (
-              <div className="grid gap-2 sm:grid-cols-2">
-                <select
-                  value={q.showIf?.questionId ?? ''}
-                  onChange={e => set({ showIf: e.target.value ? { questionId: e.target.value, equals: q.showIf?.equals ?? [] } : undefined })}
-                  className={inputCls}
-                >
-                  <option value="">Always show</option>
-                  {earlier.map(e => <option key={e.id} value={e.id}>{e.label.slice(0, 50) || e.id}</option>)}
-                </select>
-                {q.showIf && (
-                  <select
-                    multiple
-                    value={q.showIf.equals}
-                    onChange={e => set({ showIf: { questionId: q.showIf!.questionId, equals: [...e.target.selectedOptions].map(o => o.value) } })}
-                    className={cn(inputCls, 'h-24')}
-                  >
-                    {optionsOf(earlier.find(e => e.id === q.showIf!.questionId)).map(o => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                )}
-              </div>
-            )}
-          </div>
+          <LogicEditor
+            heading="Show only when…"
+            emptyLabel="Always show"
+            logic={q.showIf}
+            sources={earlier}
+            readOnly={false}
+            onChange={showIf => set({ showIf })}
+          />
 
           <div className="flex justify-end">
             <Button variant="ghost" size="sm" onClick={onRemove} className="text-destructive hover:text-destructive">
@@ -178,11 +98,6 @@ export default function QuestionEditor({
       )}
     </div>
   );
-}
-
-function optionsOf(q?: Question): string[] {
-  if (!q) return [];
-  return q.type === 'radio' || q.type === 'checkbox' || q.type === 'select' ? q.options : [];
 }
 
 // convert() and newQuestion() now delegate to engine/questionFactory.ts, the

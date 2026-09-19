@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import QuestionField from '../../engine/QuestionField';
-import type { Answers, AnswerValue, Question, Section } from '../../engine/types';
+import type { Answers, AnswerValue, Question, Section, SectionJump, SurveyDefinition } from '../../engine/types';
 import { QUESTION_TYPE_LABELS } from '../../engine/questionFactory';
 import type { BuilderIssue } from '../builderValidation';
+import { LogicEditor } from './ConditionEditor';
 
 interface Props {
+  def: SurveyDefinition;
+  sectionIndex: number;
   section: Section;
   question: Question | null; // null = the section itself is selected
   readOnly: boolean;
@@ -20,7 +23,7 @@ interface Props {
  * QuestionField a respondent would see - so there is no separate "preview
  * mirror" that could quietly drift from the real render.
  */
-export default function QuestionCanvas({ section, question, readOnly, issues, onChangeQuestion, onChangeSection }: Props) {
+export default function QuestionCanvas({ def, sectionIndex, section, question, readOnly, issues, onChangeQuestion, onChangeSection }: Props) {
   // Ephemeral only: lets the widget itself be interacted with (click a radio,
   // type in the box) so the canvas feels alive, without ever touching the
   // survey definition or being persisted anywhere.
@@ -56,6 +59,11 @@ export default function QuestionCanvas({ section, question, readOnly, issues, on
             No questions in this section yet. Add one from the left panel.
           </p>
         )}
+
+        <PageLogic
+          def={def} sectionIndex={sectionIndex} section={section} readOnly={readOnly}
+          issues={issues} onChangeSection={onChangeSection}
+        />
       </div>
     );
   }
@@ -112,9 +120,105 @@ export default function QuestionCanvas({ section, question, readOnly, issues, on
           question={q}
           answers={previewAnswers}
           onChange={setPreview}
-          error={false}
+          seed={0}
           lang="en"
         />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Page-level behaviour: when the page shows, where it sends the respondent
+ * next, and whether its questions are shuffled. All of it is evaluated by the
+ * same engine functions the respondent renderer uses.
+ */
+function PageLogic({ def, sectionIndex, section, readOnly, issues, onChangeSection }: {
+  def: SurveyDefinition; sectionIndex: number; section: Section; readOnly: boolean;
+  issues: BuilderIssue[]; onChangeSection: (patch: Partial<Section>) => void;
+}) {
+  const before = def.sections.slice(0, sectionIndex).flatMap(s => s.questions);
+  const includingThis = [...before, ...section.questions];
+  const later = def.sections.slice(sectionIndex + 1);
+  const jumps = section.jumps ?? [];
+  const setJump = (i: number, patch: Partial<SectionJump>) =>
+    onChangeSection({ jumps: jumps.map((j, n) => (n === i ? { ...j, ...patch } : j)) });
+  const problems = issues.filter(i => i.subject === section.id && i.severity === 'error');
+
+  return (
+    <div className="mt-8 space-y-4 border-t border-border pt-6">
+      <h3 className="font-display text-base text-foreground">Page logic</h3>
+
+      {problems.map((p, n) => (
+        <p key={n} className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">{p.message}</p>
+      ))}
+
+      <label className="flex items-center gap-2 text-sm text-foreground">
+        <input
+          type="checkbox" disabled={readOnly}
+          checked={!!section.randomizeQuestions}
+          onChange={e => onChangeSection({ randomizeQuestions: e.target.checked || undefined })}
+          className="h-4 w-4 accent-primary"
+        />
+        Show this page's questions in a random order
+      </label>
+
+      <LogicEditor
+        heading="Show this page when…"
+        emptyLabel="Always show"
+        logic={section.showIf}
+        sources={before}
+        readOnly={readOnly}
+        onChange={showIf => onChangeSection({ showIf })}
+      />
+
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-foreground">Skip rules</p>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Checked in order once this page is answered; the first one that matches decides where the
+          respondent goes next. With none matching they simply continue to the next page.
+        </p>
+        {jumps.map((jump, i) => (
+          <div key={i} className="space-y-2 rounded-md border border-border p-2.5">
+            <LogicEditor
+              heading={`Rule ${i + 1}: if…`}
+              emptyLabel="Add at least one condition"
+              logic={jump.when}
+              sources={includingThis}
+              readOnly={readOnly}
+              onChange={when => setJump(i, { when: when ?? { match: 'all', rules: [] } })}
+            />
+            <div className="flex items-center gap-2">
+              <select
+                disabled={readOnly} value={jump.to}
+                onChange={e => setJump(i, { to: e.target.value })}
+                className={inputCls}
+              >
+                {later.map(l => <option key={l.id} value={l.id}>Go to: {l.title || l.id}</option>)}
+                <option value="end">End the survey (submit)</option>
+                {jump.to !== 'end' && !later.some(l => l.id === jump.to) && <option value={jump.to}>(page no longer available)</option>}
+              </select>
+              {!readOnly && (
+                <button
+                  type="button" aria-label="Remove skip rule"
+                  onClick={() => onChangeSection({ jumps: jumps.filter((_, n) => n !== i) })}
+                  className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-destructive"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => onChangeSection({ jumps: [...jumps, { when: { match: 'all', rules: [] }, to: later[0]?.id ?? 'end' }] })}
+            className="rounded border border-dashed border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:border-primary/50 hover:text-foreground"
+          >
+            + Add a skip rule
+          </button>
+        )}
       </div>
     </div>
   );

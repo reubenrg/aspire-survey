@@ -6,6 +6,8 @@
  */
 import type { Question, QuestionType, Section, SurveyDefinition } from '../engine/types.ts';
 import { newQuestion } from '../engine/questionFactory.ts';
+import { logicQuestionIds } from '../engine/logic.ts';
+import { defaultColumn } from '../engine/definition.ts';
 import { newSectionId } from './builderValidation.ts';
 
 export function addSection(def: SurveyDefinition): SurveyDefinition {
@@ -31,7 +33,7 @@ export function duplicateSection(def: SurveyDefinition, index: number): SurveyDe
   const src = def.sections[index];
   const id = newSectionId(def.sections);
   const copy: Section = {
-    ...src, id, title: `${src.title} (copy)`,
+    ...src, id, title: `${src.title} (copy)`, showIf: undefined, jumps: undefined,
     // Fresh ids for every duplicated question, and conditions are dropped: a
     // condition pointing at a question in the original section would
     // otherwise point at nothing once the copy stands on its own.
@@ -45,7 +47,13 @@ export function duplicateSection(def: SurveyDefinition, index: number): SurveyDe
 /** Only an empty section may be deleted; a non-empty index is a no-op. */
 export function deleteSection(def: SurveyDefinition, index: number): SurveyDefinition {
   if (def.sections[index]?.questions.length > 0) return def;
-  return { ...def, sections: def.sections.filter((_, n) => n !== index) };
+  const removedId = def.sections[index]?.id;
+  return {
+    ...def,
+    // A skip rule pointing at the removed page would dangle, so drop it.
+    sections: def.sections.filter((_, n) => n !== index)
+      .map(s => (s.jumps ? { ...s, jumps: s.jumps.filter(j => j.to !== removedId) } : s)),
+  };
 }
 
 export function addQuestion(def: SurveyDefinition, sectionIndex: number, type: QuestionType): SurveyDefinition {
@@ -85,7 +93,12 @@ export function duplicateQuestion(def: SurveyDefinition, sectionIndex: number, q
   const section = def.sections[sectionIndex];
   const src = section.questions[qIndex];
   const id = `${section.id}_q${section.questions.length + 1}_copy`;
-  const copy: Question = { ...src, id, showIf: undefined };
+  // A matrix's columns come from its prefix, so a copy must not share the original's
+  // or both would write into the same columns.
+  const copy: Question = {
+    ...src, id, showIf: undefined,
+    ...(src.type === 'matrix' ? { columnPrefix: defaultColumn(id) } : {}),
+  } as Question;
   const next = [...section.questions];
   next.splice(qIndex + 1, 0, copy);
   return { ...def, sections: def.sections.map((s, n) => (n === sectionIndex ? { ...s, questions: next } : s)) };
@@ -99,8 +112,13 @@ export function deleteQuestion(def: SurveyDefinition, sectionIndex: number, qInd
     ...def,
     sections: def.sections.map((s, n) => {
       const questions = (n === sectionIndex ? s.questions.filter((_, i) => i !== qIndex) : s.questions)
-        .map(q => (q.showIf?.questionId === removedId ? { ...q, showIf: undefined } : q));
-      return { ...s, questions };
+        .map(q => (q.showIf && logicQuestionIds(q.showIf).includes(removedId) ? { ...q, showIf: undefined } : q));
+      return {
+        ...s,
+        questions,
+        showIf: s.showIf && logicQuestionIds(s.showIf).includes(removedId) ? undefined : s.showIf,
+        jumps: s.jumps?.filter(j => !logicQuestionIds(j.when).includes(removedId)),
+      };
     }),
   };
 }

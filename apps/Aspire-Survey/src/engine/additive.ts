@@ -20,7 +20,7 @@ function columnOf(q: Question): string {
 
 /** text[] for multi-select, text for everything else. Changing this breaks the column. */
 function storageOf(q: Question): 'text' | 'text[]' {
-  return q.type === 'checkbox' ? 'text[]' : 'text';
+  return q.type === 'checkbox' || q.type === 'ranking' ? 'text[]' : 'text';
 }
 
 /**
@@ -107,8 +107,7 @@ export function validateAdditive(
       }
     }
 
-    if ((old.type === 'radio' || old.type === 'checkbox' || old.type === 'select')
-      && (now.type === 'radio' || now.type === 'checkbox' || now.type === 'select')) {
+    if ('options' in old && 'options' in now) {
       const dropped = old.options.filter(o => !now.options.includes(o));
       if (dropped.length > 0) {
         issues.push({

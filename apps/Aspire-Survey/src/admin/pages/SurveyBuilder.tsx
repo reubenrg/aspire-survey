@@ -273,6 +273,7 @@ export default function SurveyBuilder() {
         <div className={cn('min-h-0 overflow-y-auto md:block', mobileTab === 'canvas' ? 'block' : 'hidden')}>
           {section ? (
             <QuestionCanvas
+              def={def} sectionIndex={selection!.sectionIndex}
               section={section} question={question} readOnly={readOnly} issues={allIssues}
               onChangeQuestion={nq => setDef({
                 ...def,

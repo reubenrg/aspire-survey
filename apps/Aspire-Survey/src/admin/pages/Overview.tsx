@@ -146,14 +146,17 @@ export default function Overview() {
  * a number above every bar competes with the shape it is describing.
  */
 function Trend({ days }: { days: { day: string; n: number }[] }) {
-  if (days.length === 0) {
+  // The database returns every day in the window, zero-filled, so "no data" is
+  // "every day is zero" rather than an empty list - and a chart of all zeros
+  // has no scale (0/0) and should say so instead of drawing empty bars.
+  if (days.length === 0 || days.every(d => d.n === 0)) {
     return (
       <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
         No responses in the last 30 days.
       </p>
     );
   }
-  const max = Math.max(...days.map(d => d.n));
+  const max = Math.max(1, ...days.map(d => d.n));
   return (
     <div className="rounded-lg border border-border p-4">
       <div className="flex h-24 items-end gap-[3px] overflow-x-auto">

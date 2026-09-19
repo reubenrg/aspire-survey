@@ -8,7 +8,10 @@ import { Button } from '../components/ui/button';
 import { LanguageProvider, useLang } from '../i18n/LanguageContext';
 import { TranslateProvider, useT } from './translate';
 import QuestionField from './QuestionField';
-import { missingAnswers, visibleQuestions } from './definition';
+import { firstSectionIndex, nextSectionIndex, sectionPath, visibleQuestions } from './definition';
+import { validateSection } from './validation';
+import { pipe } from './logic';
+import { newSeed, seededShuffle } from './randomize';
 import { RESPONDENT_PRIVACY_NOTICE, type EnginePrivacyMode } from './privacyNotices';
 import type { Answers, AnswerValue, SurveyDefinition } from './types';
 
@@ -36,51 +39,85 @@ export default function SurveyRenderer(props: Props) {
 function SurveyBody({ definition, onSubmit, privacyMode, onStart }: Props) {
   const { lang } = useLang();
   const t = useT();
-  const [step, setStep] = useState(0);
+  // 'welcome' -> a page (index into definition.sections) -> 'thanks'. Pages are
+  // walked by the survey's own skip/display logic, so the respondent's route is
+  // a stack of the indices they have actually visited, not "step - 1".
+  const [stage, setStage] = useState<'welcome' | 'section' | 'thanks'>('welcome');
+  const [index, setIndex] = useState(0);
+  const [history, setHistory] = useState<number[]>([]);
   const [answers, setAnswers] = useState<Answers>({});
-  const [errors, setErrors] = useState<Set<string>>(new Set());
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [seed] = useState(newSeed);
 
   const total = definition.sections.length;
-  // 0 = welcome, 1..total = sections, total + 1 = thank you
-  const thankYouStep = total + 1;
 
   const setAnswer = useCallback((key: string, value: AnswerValue) => {
     setAnswers(prev => ({ ...prev, [key]: value }));
     setErrors(prev => {
-      if (!prev.has(key)) return prev;
-      const next = new Set(prev);
-      next.delete(key);
+      if (!(key in prev)) return prev;
+      const next = { ...prev };
+      delete next[key];
       return next;
     });
   }, []);
 
-  const go = useCallback((to: number) => {
-    setStep(to);
-    setErrors(new Set());
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+  const scrollTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
-  const section = step >= 1 && step <= total ? definition.sections[step - 1] : null;
-  const shown = useMemo(
-    () => (section ? visibleQuestions(section, answers) : []),
-    [section, answers],
-  );
+  const section = stage === 'section' ? definition.sections[index] ?? null : null;
+  const shown = useMemo(() => {
+    if (!section) return [];
+    const visible = visibleQuestions(section, answers);
+    return section.randomizeQuestions ? seededShuffle(visible, seed, section.id) : visible;
+  }, [section, answers, seed]);
+
+  // Position within the route the current answers imply, so "page 2 of 4" stays
+  // honest when a skip rule shortens the survey.
+  const path = useMemo(() => sectionPath(definition, answers), [definition, answers]);
+  const position = Math.max(1, path.indexOf(index) + 1);
+  const routeLength = Math.max(position, path.length);
+  const isLast = section ? nextSectionIndex(definition, index, answers) >= total : false;
+
+  const begin = () => {
+    onStart?.();
+    setIndex(Math.min(firstSectionIndex(definition, answers), Math.max(0, total - 1)));
+    setHistory([]);
+    setStage('section');
+    scrollTop();
+  };
+
+  const back = () => {
+    const prev = history[history.length - 1];
+    if (prev === undefined) return;
+    setHistory(h => h.slice(0, -1));
+    setIndex(prev);
+    setErrors({});
+    scrollTop();
+  };
 
   const advance = async () => {
     if (!section) return;
-    const missing = missingAnswers(section, answers);
-    if (missing.length > 0) {
-      setErrors(new Set(missing));
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+    const problems = validateSection(section, answers);
+    if (Object.keys(problems).length > 0) {
+      setErrors(problems);
+      scrollTop();
       return;
     }
-    if (step < total) { go(step + 1); return; }
+    const next = nextSectionIndex(definition, index, answers);
+    if (next < total) {
+      setHistory(h => [...h, index]);
+      setIndex(next);
+      setErrors({});
+      scrollTop();
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       await onSubmit(answers);
-      go(thankYouStep);
+      setStage('thanks');
+      setErrors({});
+      scrollTop();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Submission failed. Please try again.');
     } finally {
@@ -88,7 +125,7 @@ function SurveyBody({ definition, onSubmit, privacyMode, onStart }: Props) {
     }
   };
 
-  if (step === 0) {
+  if (stage === 'welcome') {
     return (
       <div className="min-h-screen bg-background">
         <div className="max-w-2xl mx-auto px-6 py-10">
@@ -113,19 +150,19 @@ function SurveyBody({ definition, onSubmit, privacyMode, onStart }: Props) {
             </div>
           )}
           <div className="flex justify-center mt-8">
-            <Button onClick={() => { onStart?.(); go(1); }}>{t(definition.welcome.startLabel || 'Begin Survey', lang)}</Button>
+            <Button onClick={begin}>{t(definition.welcome.startLabel || 'Begin Survey', lang)}</Button>
           </div>
         </div>
       </div>
     );
   }
 
-  if (step === thankYouStep) {
+  if (stage === 'thanks') {
     return (
       <div className="min-h-screen bg-background grid place-items-center px-6">
         <div className="max-w-xl text-center">
           <h2 className="text-2xl font-display text-foreground mb-4">{t(definition.thankYou.heading, lang)}</h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">{t(definition.thankYou.body, lang)}</p>
+          <p className="text-sm leading-relaxed text-muted-foreground">{pipe(t(definition.thankYou.body, lang), answers)}</p>
         </div>
       </div>
     );
@@ -135,7 +172,7 @@ function SurveyBody({ definition, onSubmit, privacyMode, onStart }: Props) {
 
   return (
     <div className="min-h-screen bg-background">
-      <EngineHeader brand={definition.brand || definition.title} currentSection={step} totalSections={total} />
+      <EngineHeader brand={definition.brand || definition.title} currentSection={position} totalSections={routeLength} />
       <div className="max-w-2xl mx-auto px-6 py-8">
         <h2 className="text-xl font-display text-foreground mb-4">{t(section.title, lang)}</h2>
         {section.intro && (
@@ -153,16 +190,17 @@ function SurveyBody({ definition, onSubmit, privacyMode, onStart }: Props) {
               question={q}
               answers={answers}
               onChange={setAnswer}
-              error={errors.has(q.id)}
+              error={errors[q.id]}
+              seed={seed}
               lang={lang}
             />
           ))}
         </div>
         <NavigationButtons
-          onBack={step > 1 ? () => go(step - 1) : undefined}
-          showBack={step > 1}
+          onBack={history.length > 0 ? back : undefined}
+          showBack={history.length > 0}
           onNext={advance}
-          nextLabel={step === total ? 'Submit Survey' : 'Next'}
+          nextLabel={isLast ? 'Submit Survey' : 'Next'}
           isSubmitting={isSubmitting}
           lang={lang}
         />
