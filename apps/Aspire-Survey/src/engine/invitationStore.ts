@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { buildRow } from './definition';
+import { buildSubmissionRow } from './submission';
 import type { Answers, SurveyDefinition } from './types';
 
 export type InvitationProblem = 'INVALID' | 'REVOKED' | 'COMPLETED' | 'EXPIRED' | 'CLOSED' | 'UNAVAILABLE';
@@ -65,7 +65,7 @@ export async function submitInvitedResponse(
   token: string, definition: SurveyDefinition, answers: Answers,
 ): Promise<{ ok: true } | { ok: false; reason: SubmitProblem }> {
   const { data, error } = await supabase.rpc('submit_invited_response', {
-    p_token: token, p_payload: buildRow(definition, answers),
+    p_token: token, p_payload: buildSubmissionRow(definition, answers),
   });
   if (error) throw new Error(error.message || 'Submission failed. Please try again.');
   const r = data as { ok: boolean; reason?: SubmitProblem };

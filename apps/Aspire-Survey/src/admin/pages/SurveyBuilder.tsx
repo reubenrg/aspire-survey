@@ -299,6 +299,7 @@ export default function SurveyBuilder() {
             <PropertiesPanel
               question={question} earlier={earlierQuestions} readOnly={readOnly}
               hasResponses={(responseCount ?? 0) > 0}
+              scoring={!!def.scoring?.enabled}
               organizationId={survey.organization_id}
               onChange={nq => setDef({
                 ...def,

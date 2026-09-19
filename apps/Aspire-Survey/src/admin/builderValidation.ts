@@ -190,6 +190,20 @@ export function validateSurveyStructure(def: SurveyDefinition): BuilderIssue[] {
     seenHidden.add(col);
   }
 
+  if (def.scoring?.enabled) {
+    if (!(def.hiddenFields ?? []).includes('quiz_score')) {
+      issues.push({ severity: 'error', subject: 'survey', message: 'Scoring is on but the "quiz_score" field is missing. Open Survey settings, switch scoring off and on again.' });
+    }
+    const mins = (def.scoring.bands ?? []).map(b => b.min);
+    if (mins.some(m => !Number.isFinite(m))) issues.push({ severity: 'error', subject: 'survey', message: 'Every result band needs a numeric minimum score.' });
+    if (new Set(mins).size !== mins.length) issues.push({ severity: 'error', subject: 'survey', message: 'Two result bands start at the same score.' });
+    if ((def.scoring.bands ?? []).some(b => !b.label.trim())) issues.push({ severity: 'error', subject: 'survey', message: 'Every result band needs a label.' });
+    const scored = allQuestions.some(q => ('optionScores' in q && q.optionScores && Object.keys(q.optionScores).length > 0) || ('scoreWeight' in q && q.scoreWeight));
+    if (!scored) issues.push({ severity: 'warning', subject: 'survey', message: 'Scoring is on but no question awards any points yet.' });
+  } else if ((def.hiddenFields ?? []).includes('quiz_score')) {
+    issues.push({ severity: 'warning', subject: 'survey', message: 'The "quiz_score" field is listed but scoring is off, so it will always be empty.' });
+  }
+
   for (const ref of pipedQuestionIds(def.thankYou.body)) {
     if (!questionsById.has(ref)) {
       issues.push({ severity: 'error', subject: 'survey', message: `The thank-you message pipes in an answer from "${ref}", which does not exist.` });

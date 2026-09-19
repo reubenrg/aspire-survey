@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
-import { buildRow, tableNameFor } from './definition';
+import { tableNameFor } from './definition';
+import { buildSubmissionRow } from './submission';
 import type { EnginePrivacyMode } from './privacyNotices';
 import type { Answers, SurveyDefinition } from './types';
 
@@ -83,7 +84,7 @@ export async function loadSurvey(slug: string): Promise<SurveyRecord> {
 export async function submitResponse(record: SurveyRecord, answers: Answers): Promise<void> {
   // Stamp the version that produced these answers, so a row is always readable
   // against the definition that was actually on screen when it was filled in.
-  const row = { ...buildRow(record.definition, answers), definition_version: record.currentVersion };
+  const row = { ...buildSubmissionRow(record.definition, answers), definition_version: record.currentVersion };
   const table = record.tableName || tableNameFor(record.definition);
 
   const { error } = await supabase.from(table).insert(row);

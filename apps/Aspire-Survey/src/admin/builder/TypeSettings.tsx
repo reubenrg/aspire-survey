@@ -23,6 +23,8 @@ interface Props {
   onChange: (q: Question) => void;
   /** Questions before this one; needed for carry-forward and per-option rules. Omit where there is no survey (the library). */
   earlier?: Question[];
+  /** Show the quiz-scoring points editor (the survey has scoring switched on). */
+  scoring?: boolean;
 }
 
 const num = (v: string): number | undefined => (v === '' ? undefined : Number(v));
@@ -32,7 +34,60 @@ const num = (v: string): number | undefined => (v === '' ? undefined : Number(v)
  * formats, scales. Shared by the Builder's properties panel and the older
  * /admin/:slug editor so both offer exactly what the engine supports.
  */
-export default function TypeSettings({ question: q, readOnly, onChange, earlier }: Props) {
+export default function TypeSettings(props: Props) {
+  return (
+    <>
+      <TypeSettingsBody {...props} />
+      {props.scoring && <ScoringEditor q={props.question} readOnly={props.readOnly} onChange={props.onChange} />}
+    </>
+  );
+}
+
+/** Points for a question's answers, shown only when the survey has scoring on. */
+function ScoringEditor({ q, readOnly, onChange }: { q: Question; readOnly: boolean; onChange: (q: Question) => void }) {
+  const setScores = (optionScores: Record<string, number>) => onChange({ ...q, optionScores } as Question);
+  const pts = (value: number | undefined, on: (n: number | undefined) => void, label: string) => (
+    <label className="flex items-center gap-2 text-xs text-foreground">
+      <input
+        type="number" step="any" disabled={readOnly} value={value ?? ''} aria-label={`Points for ${label}`}
+        onChange={e => on(e.target.value === '' ? undefined : Number(e.target.value))}
+        className="w-20 rounded-md border border-border bg-background px-2 py-1 text-right text-sm tabular-nums outline-none focus:border-primary/60"
+      />
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+    </label>
+  );
+
+  const choiceOptions = q.type === 'radio' || q.type === 'select' || q.type === 'checkbox' || q.type === 'image' ? q.options
+    : q.type === 'yesno' ? ['Yes', 'No'] : null;
+  const scores = (q as { optionScores?: Record<string, number> }).optionScores ?? {};
+
+  if (choiceOptions) {
+    return (
+      <div className="rounded-md border border-border/60 bg-muted/30 p-3">
+        <p className="mb-2 text-xs font-medium text-foreground">Points</p>
+        <div className="space-y-1.5">
+          {choiceOptions.filter(o => o.trim() !== '').map(o => pts(scores[o], n => {
+            const next = { ...scores };
+            if (n === undefined) delete next[o]; else next[o] = n;
+            setScores(next);
+          }, o))}
+        </div>
+        <p className="mt-2 text-[11px] text-muted-foreground">An option with no number is worth 0. Use negative numbers to take points away.</p>
+      </div>
+    );
+  }
+  if (q.type === 'rating' || q.type === 'nps' || q.type === 'slider' || q.type === 'number') {
+    return (
+      <div className="rounded-md border border-border/60 bg-muted/30 p-3">
+        <p className="mb-2 text-xs font-medium text-foreground">Points</p>
+        {pts(q.scoreWeight, n => onChange({ ...q, scoreWeight: n } as Question), 'per unit of the answer (a 4 at 2 per unit scores 8)')}
+      </div>
+    );
+  }
+  return null;
+}
+
+function TypeSettingsBody({ question: q, readOnly, onChange, earlier }: Props) {
   const set = (patch: Record<string, unknown>) => onChange({ ...q, ...patch } as Question);
   const numberInput = (key: string, value: number | undefined, extra?: { min?: number; max?: number; step?: number }) => (
     <input

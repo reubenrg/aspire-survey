@@ -98,6 +98,8 @@ interface BaseQuestion {
  *  - optionLogic: show an individual option only when its rule holds (per-answer display logic).
  */
 export interface OptionExtras {
+  /** Quiz scoring: points awarded when this option is chosen. Missing = 0. */
+  optionScores?: Record<string, number>;
   optionsFrom?: { questionId: string; mode: 'selected' | 'unselected' };
   optionLogic?: Record<string, Logic>;
 }
@@ -172,6 +174,8 @@ export interface MatrixQuestion extends BaseQuestion {
 /** 1..max stars (or numbers). Stored as the number, as text. */
 export interface RatingQuestion extends BaseQuestion {
   type: 'rating';
+  /** Quiz scoring: points per unit of the answer (a 4 with weight 2 scores 8). */
+  scoreWeight?: number;
   /** Highest rating, 3 to 10. Defaults to 5. */
   max?: number;
   shape?: 'star' | 'number';
@@ -182,6 +186,7 @@ export interface RatingQuestion extends BaseQuestion {
 /** Net Promoter Score: 0..10. Stored as the number, as text. */
 export interface NpsQuestion extends BaseQuestion {
   type: 'nps';
+  scoreWeight?: number;
   lowLabel?: string;
   highLabel?: string;
 }
@@ -189,12 +194,15 @@ export interface NpsQuestion extends BaseQuestion {
 /** Stored as 'Yes' or 'No' whatever the labels say, so data stays comparable. */
 export interface YesNoQuestion extends BaseQuestion {
   type: 'yesno';
+  /** Quiz scoring: points for 'Yes' and for 'No'. */
+  optionScores?: Record<string, number>;
   yesLabel?: string;
   noLabel?: string;
 }
 
 export interface NumberQuestion extends BaseQuestion {
   type: 'number';
+  scoreWeight?: number;
   min?: number;
   max?: number;
   step?: number;
@@ -220,6 +228,7 @@ export interface EmailQuestion extends BaseQuestion {
 
 export interface SliderQuestion extends BaseQuestion {
   type: 'slider';
+  scoreWeight?: number;
   /** Defaults 0..100, step 1. */
   min?: number;
   max?: number;
@@ -338,6 +347,13 @@ export interface Section {
   questions: Question[];
 }
 
+/** A result band: everyone whose score reaches `min` (and no higher band) gets this label and message. */
+export interface ScoreBand {
+  min: number;
+  label: string;
+  message?: string;
+}
+
 export interface SurveyDefinition {
   /** URL segment, and the suffix of the response table name. */
   slug: string;
@@ -370,6 +386,12 @@ export interface SurveyDefinition {
   hiddenFields?: string[];
   /** Let respondents leave and pick up where they stopped, on the same device. Default on. */
   saveProgress?: boolean;
+  /**
+   * Quiz scoring. When enabled the total is stored in the hidden `quiz_score` column
+   * (the builder keeps that field in `hiddenFields` for you) and can be shown to the
+   * respondent with {{score}}, {{maxscore}} and {{result}} in the thank-you message.
+   */
+  scoring?: { enabled: boolean; showResult?: boolean; bands?: ScoreBand[] };
 }
 
 /** Everything a respondent has answered so far, keyed by question id. */

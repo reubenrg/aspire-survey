@@ -13,6 +13,8 @@ interface Props {
   earlier: Question[];
   readOnly: boolean;
   hasResponses: boolean;
+  /** The survey has quiz scoring switched on. */
+  scoring?: boolean;
   organizationId: string | null;
   onChange: (q: Question) => void;
   onDelete: () => void;
@@ -25,7 +27,7 @@ interface Props {
  * and collapsed by default, for the rare person who wants to see the exact
  * shape being saved.
  */
-export default function PropertiesPanel({ question: q, earlier, readOnly, hasResponses, organizationId, onChange, onDelete }: Props) {
+export default function PropertiesPanel({ question: q, earlier, readOnly, hasResponses, scoring, organizationId, onChange, onDelete }: Props) {
   const set = (patch: Partial<Question>) => onChange({ ...q, ...patch } as Question);
   const [savingToLibrary, setSavingToLibrary] = useState(false);
 
@@ -65,7 +67,7 @@ export default function PropertiesPanel({ question: q, earlier, readOnly, hasRes
           />
         </Field>
 
-        <TypeSettings question={q} readOnly={readOnly} onChange={onChange} earlier={earlier} />
+        <TypeSettings question={q} readOnly={readOnly} onChange={onChange} earlier={earlier} scoring={scoring} />
 
         <ConditionEditor
           question={q} earlier={earlier} readOnly={readOnly}

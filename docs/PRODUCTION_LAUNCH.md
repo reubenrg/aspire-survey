@@ -52,6 +52,9 @@ The open-link test survey (`/s/test-customer-satisfaction`) is public; its one e
 4. **Backups.** The Supabase project is on the free plan: no confirmed backups or restore, and free projects pause after a week of inactivity. Upgrade before real customer data goes in. See `DISASTER_RECOVERY.md`.
 5. **Vercel plan.** The team is on Vercel's Hobby tier, which is meant for non-commercial use; check against Vercel's current terms for a customer-facing product.
 
+6. **AI drafting (optional).** Add the Edge Function secret `ANTHROPIC_API_KEY` to the `generate-survey` function (Supabase → Edge Functions → Secrets); optionally `ANTHROPIC_MODEL` to override the default. Until it is set the *Draft with AI* option explains that it is not switched on. The function is limited to 20 drafts per editor per hour.
+7. **Outgoing webhooks** need no setup: they run inside the database (`pg_net`). Test any endpoint with the *Send test* button.
+
 ## Rollback
 
 - **Frontend:** Vercel Instant Rollback to the previous production deployment (the last S2M-era build is `dpl_FyNM3QUmJzfixVYgFR194A18XgnS`, `main` at `9062424`). Not exercised.

@@ -45,6 +45,14 @@ export function questionColumns(def: SurveyDefinition): ColumnMeta[] {
       out.push(...columnsForQuestion(q, section.title));
     }
   }
+  // Values carried in the link, and the quiz score, are analysable columns too.
+  for (const id of def.hiddenFields ?? []) {
+    const isScore = id === 'quiz_score';
+    out.push({
+      column: defaultColumn(id), label: isScore ? 'Quiz score' : `Link field: ${id}`,
+      kind: isScore ? 'numeric' : 'choice', questionId: id, sectionTitle: isScore ? 'Scoring' : 'Hidden fields',
+    });
+  }
   return out;
 }
 

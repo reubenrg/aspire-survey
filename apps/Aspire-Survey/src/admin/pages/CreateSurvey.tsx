@@ -8,11 +8,13 @@ import {
 } from '../adminStore';
 import { fetchTemplates, createSurveyFromTemplate, type SurveyTemplate } from '../templateStore';
 import { useOrganizations } from '../useOrganizations';
+import { validateSurveyStructure } from '../builderValidation';
 import { PRIVACY_MODE_DESCRIPTION, PRIVACY_MODE_LABEL, type PrivacyMode } from '../labels';
 import { ErrorNote, PageHeader, SearchInput } from '../ui';
 import type { SurveyDefinition } from '../../engine/types';
+import GeneratedStart from './GeneratedStart';
 
-type StartingPoint = 'blank' | 'template' | 'duplicate';
+type StartingPoint = 'blank' | 'template' | 'duplicate' | 'paste' | 'ai';
 const STEPS = ['Starting point', 'Customer', 'Basics', 'Privacy mode'] as const;
 
 function blankDefinition(title: string): SurveyDefinition {
@@ -49,6 +51,7 @@ export default function CreateSurvey() {
   const [selectedTemplate, setSelectedTemplate] = useState<SurveyTemplate | null>(null);
   const [existingSurveys, setExistingSurveys] = useState<SurveyRow[] | null>(null);
   const [selectedExisting, setSelectedExisting] = useState<SurveyRow | null>(null);
+  const [generated, setGenerated] = useState<SurveyDefinition | null>(null);
 
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
@@ -109,7 +112,8 @@ export default function CreateSurvey() {
   const selectedOrg = eligible.find(o => o.id === organizationId) ?? null;
   const effectiveCategory = category === 'Custom' ? customCategory.trim() : category;
 
-  const canProceedStep0 = startingPoint === 'blank' || (startingPoint === 'template' && selectedTemplate !== null) || (startingPoint === 'duplicate' && selectedExisting !== null);
+  const generatedOk = generated !== null && validateSurveyStructure(generated).every(i => i.severity !== 'error');
+  const canProceedStep0 = ((startingPoint === 'paste' || startingPoint === 'ai') && generatedOk) || startingPoint === 'blank' || (startingPoint === 'template' && selectedTemplate !== null) || (startingPoint === 'duplicate' && selectedExisting !== null);
   const canProceedStep1 = organizationId !== null;
   const canProceedStep2 = title.trim().length > 0 && (category !== 'Custom' || customCategory.trim().length > 0);
   const canSubmit = privacyMode !== null && (privacyMode !== 'CONFIDENTIAL' || ack);
@@ -127,6 +131,10 @@ export default function CreateSurvey() {
         const t = title.trim();
         let slug = slugify(t) || `${selectedExisting.slug}-copy`;
         const definition: SurveyDefinition = { ...selectedExisting.definition, slug, title: t };
+        row = await createSurveyDraft({ definition, organizationId, privacyMode, category: effectiveCategory, purpose: purpose.trim() });
+      } else if ((startingPoint === 'paste' || startingPoint === 'ai') && generated) {
+        const t = title.trim();
+        const definition: SurveyDefinition = { ...generated, slug: slugify(t) || 'untitled-survey', title: t, welcome: { ...generated.welcome, heading: generated.welcome.heading === generated.title ? t : generated.welcome.heading } };
         row = await createSurveyDraft({ definition, organizationId, privacyMode, category: effectiveCategory, purpose: purpose.trim() });
       } else {
         const definition = blankDefinition(title.trim());
@@ -165,7 +173,8 @@ export default function CreateSurvey() {
       {step === 0 && (
         <StartingPointStep
           value={startingPoint}
-          onChange={sp => { setStartingPoint(sp); setSelectedTemplate(null); setSelectedExisting(null); }}
+          onChange={sp => { setStartingPoint(sp); setSelectedTemplate(null); setSelectedExisting(null); setGenerated(null); setTitle(''); }}
+          generated={generated} onGenerated={def => { setGenerated(def); if (def && def.title !== 'Untitled survey') setTitle(def.title); }}
           templates={templates} onPickTemplate={applyTemplate} selectedTemplate={selectedTemplate}
           existingSurveys={duplicatable} onPickExisting={applyExisting} selectedExisting={selectedExisting}
         />
@@ -218,8 +227,9 @@ export default function CreateSurvey() {
 }
 
 function StartingPointStep({
-  value, onChange, templates, onPickTemplate, selectedTemplate, existingSurveys, onPickExisting, selectedExisting,
+  value, onChange, templates, onPickTemplate, selectedTemplate, existingSurveys, onPickExisting, selectedExisting, generated, onGenerated,
 }: {
+  generated: SurveyDefinition | null; onGenerated: (d: SurveyDefinition | null) => void;
   value: StartingPoint; onChange: (v: StartingPoint) => void;
   templates: SurveyTemplate[] | null; onPickTemplate: (t: SurveyTemplate) => void; selectedTemplate: SurveyTemplate | null;
   existingSurveys: SurveyRow[]; onPickExisting: (s: SurveyRow) => void; selectedExisting: SurveyRow | null;
@@ -230,18 +240,26 @@ function StartingPointStep({
       <p className="mb-4 text-sm text-muted-foreground">You can add, remove or rewrite every question afterward, whichever you pick.</p>
 
       <div className="grid gap-2 sm:grid-cols-3">
-        {(['blank', 'template', 'duplicate'] as StartingPoint[]).map(sp => (
+        {(['blank', 'template', 'duplicate', 'paste', 'ai'] as StartingPoint[]).map(sp => (
           <button
             key={sp} type="button" onClick={() => onChange(sp)}
             className={cn('rounded-lg border p-3 text-left transition-colors', value === sp ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40')}
           >
-            <span className="block text-sm font-medium text-foreground">{sp === 'blank' ? 'Blank' : sp === 'template' ? 'Template' : 'Duplicate existing survey'}</span>
+            <span className="block text-sm font-medium text-foreground">
+              {sp === 'blank' ? 'Blank' : sp === 'template' ? 'Template' : sp === 'duplicate' ? 'Duplicate existing survey' : sp === 'paste' ? 'Paste questions' : 'Draft with AI'}
+            </span>
             <span className="block text-xs text-muted-foreground">
-              {sp === 'blank' ? 'Start from an empty survey.' : sp === 'template' ? 'Start from a reusable structure.' : 'Copy the structure of a survey you already have.'}
+              {sp === 'blank' ? 'Start from an empty survey.'
+                : sp === 'template' ? 'Start from a reusable structure.'
+                : sp === 'duplicate' ? 'Copy the structure of a survey you already have.'
+                : sp === 'paste' ? 'Turn a list of questions from a document into a survey.'
+                : 'Describe it in a sentence or two and review the draft.'}
             </span>
           </button>
         ))}
       </div>
+
+      {(value === 'paste' || value === 'ai') && <GeneratedStart mode={value} definition={generated} onDefinition={onGenerated} />}
 
       {value === 'template' && (
         <div className="mt-4">

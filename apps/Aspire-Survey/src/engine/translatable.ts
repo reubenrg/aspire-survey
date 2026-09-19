@@ -43,6 +43,7 @@ export function translatableStrings(def: SurveyDefinition): string[] {
 
   push(def.thankYou.heading);
   push(def.thankYou.body);
+  for (const b of def.scoring?.bands ?? []) { push(b.label); push(b.message); }
   return out;
 }
 

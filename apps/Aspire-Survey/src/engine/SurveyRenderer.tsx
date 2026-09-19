@@ -11,6 +11,7 @@ import QuestionField from './QuestionField';
 import { firstSectionIndex, flatQuestions, nextSectionIndex, resolveOptions, sectionPath, visibleQuestions } from './definition';
 import { validateSection } from './validation';
 import { pipe } from './logic';
+import { computeScore, fillScoreTokens } from './scoring';
 import { newSeed, seededShuffle } from './randomize';
 import { clearProgress, loadProgress, progressFits, saveProgress, type SavedProgress } from './progress';
 import { RESPONDENT_PRIVACY_NOTICE, type EnginePrivacyMode } from './privacyNotices';
@@ -220,11 +221,26 @@ function SurveyBody({ definition, onSubmit, privacyMode, onStart, progressKey, h
   }
 
   if (stage === 'thanks') {
+    const quiz = definition.scoring?.enabled ? computeScore(definition, answers) : null;
     return (
       <div className="min-h-screen bg-background grid place-items-center px-6">
         <div className="max-w-xl text-center">
           <h2 className="text-2xl font-display text-foreground mb-4">{t(definition.thankYou.heading, lang)}</h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">{pipe(t(definition.thankYou.body, lang), answers)}</p>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {pipe(quiz ? fillScoreTokens(t(definition.thankYou.body, lang), quiz) : t(definition.thankYou.body, lang), answers)}
+          </p>
+          {quiz && definition.scoring?.showResult && (
+            <div className="mx-auto mt-6 max-w-sm rounded-lg border border-primary/40 bg-primary/5 px-5 py-4" role="status">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">{t('Your score', lang)}</p>
+              <p className="font-display text-4xl tabular-nums text-foreground">{quiz.score}{quiz.max > 0 && <span className="text-lg text-muted-foreground"> / {quiz.max}</span>}</p>
+              {quiz.band && (
+                <>
+                  <p className="mt-1 text-sm font-medium text-primary">{t(quiz.band.label, lang)}</p>
+                  {quiz.band.message && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{t(quiz.band.message, lang)}</p>}
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );
