@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import EngineHeader from './EngineHeader';
 import SurveyToaster from '../components/SurveyToaster';
@@ -31,6 +31,8 @@ interface Props {
   progressKey?: string;
   /** Values from the survey link for the definition's hidden fields. */
   hiddenValues?: Record<string, string>;
+  /** Reports drop-off: 0 when the survey is opened, then page index + 1 each time a page is reached. Omit in previews. */
+  onStep?: (step: number) => void;
 }
 
 export default function SurveyRenderer(props: Props) {
@@ -44,7 +46,7 @@ export default function SurveyRenderer(props: Props) {
   );
 }
 
-function SurveyBody({ definition, onSubmit, privacyMode, onStart, progressKey, hiddenValues }: Props) {
+function SurveyBody({ definition, onSubmit, privacyMode, onStart, progressKey, hiddenValues, onStep }: Props) {
   const { lang } = useLang();
   const t = useT();
   // 'welcome' -> a page (index into definition.sections) -> 'thanks'. Pages are
@@ -60,6 +62,16 @@ function SurveyBody({ definition, onSubmit, privacyMode, onStart, progressKey, h
 
   const total = definition.sections.length;
   const allQuestions = useMemo(() => flatQuestions(definition), [definition]);
+
+  // Each step is reported once per visit, however often the respondent navigates back and forth.
+  const reported = useRef(new Set<number>());
+  const report = useCallback((step: number) => {
+    if (!onStep || reported.current.has(step)) return;
+    reported.current.add(step);
+    onStep(step);
+  }, [onStep]);
+  useEffect(() => { report(0); }, [report]);
+  useEffect(() => { if (stage === 'section') report(index + 1); }, [stage, index, report]);
 
   const canSave = !!progressKey && definition.saveProgress !== false;
   // Read once: a saved place is offered on the welcome screen, never applied silently.

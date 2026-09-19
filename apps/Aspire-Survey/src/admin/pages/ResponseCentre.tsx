@@ -97,12 +97,13 @@ export default function ResponseCentre() {
 
   const shownColumns = visibleColumns ? columns.filter(c => visibleColumns.has(c.column)) : columns;
 
-  const doExport = async () => {
+  const doExport = async (format: 'csv' | 'xls' = 'csv') => {
     if (!survey) return;
     setExporting(true);
     try {
-      const result = await exportResponsesCsv(slug, survey.organization_id, filters);
-      downloadFile(`${slug}-responses-${result.identityIncluded ? 'identified' : 'deidentified'}.csv`, result.csv);
+      const result = await exportResponsesCsv(slug, survey.organization_id, filters, format);
+      const name = `${slug}-responses-${result.identityIncluded ? 'identified' : 'deidentified'}.${format}`;
+      downloadFile(name, result.csv, format === 'xls' ? 'application/vnd.ms-excel;charset=utf-8' : 'text/csv;charset=utf-8');
     } catch (e) {
       setRowsError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -179,7 +180,8 @@ export default function ResponseCentre() {
                 </div>
               )}
             </div>
-            <Button variant="outline" size="sm" onClick={doExport} disabled={exporting}>{exporting ? 'Exporting…' : 'Export CSV'}</Button>
+            <Button variant="outline" size="sm" onClick={() => void doExport('csv')} disabled={exporting}>{exporting ? 'Exporting…' : 'Export CSV'}</Button>
+            <Button variant="outline" size="sm" onClick={() => void doExport('xls')} disabled={exporting}>Export Excel</Button>
           </div>
 
           {rows === null ? <SkeletonRows rows={6} /> : rows.length === 0 ? (

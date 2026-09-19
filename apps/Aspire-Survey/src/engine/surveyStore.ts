@@ -16,6 +16,15 @@ export interface SurveyRecord {
   closesAt: string | null;
 }
 
+/**
+ * Counts that someone opened the survey (step 0) or reached a page (step = page index + 1).
+ * Fire and forget, and it carries nothing that identifies the visitor: the database keeps
+ * only a daily counter per step. A failure here must never affect the respondent.
+ */
+export function recordSurveyStep(slug: string, step: number): void {
+  void Promise.resolve(supabase.rpc('record_survey_step', { p_slug: slug, p_step: step })).catch(() => {});
+}
+
 /** Why a survey is or is not taking responses right now. The database decides; it never says how many. */
 export type Availability = 'open' | 'not_open_yet' | 'ended' | 'full' | 'closed';
 

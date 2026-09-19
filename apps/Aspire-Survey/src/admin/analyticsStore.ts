@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { recordAudit } from './reportStore';
-import { toCsv } from './csvExport';
+import { toCsv, toExcelXml } from './csvExport';
 import { toDomainError, rpcErrorFrom, NotAuthorised } from './domainError';
 
 export { NotAuthorised };
@@ -103,6 +103,18 @@ export async function fetchTextCount(slug: string, column: string, version?: num
   return Number(data ?? 0);
 }
 
+// ── Drop-off funnel ────────────────────────────────────────────────────
+
+export async function fetchFunnel(slug: string): Promise<{ steps: { step: number; n: number }[]; since: string | null }> {
+  const { data, error } = await supabase.rpc('survey_funnel', { p_slug: slug });
+  if (error) throw translate(error, 'view drop-off');
+  const rows = (data ?? []) as { step: number; n: number; first_day: string }[];
+  return {
+    steps: rows.map(r => ({ step: r.step, n: Number(r.n) })),
+    since: rows.length ? rows.map(r => r.first_day).sort()[0] : null,
+  };
+}
+
 // ── Trend (Part 7) ───────────────────────────────────────────────────────
 
 export interface TrendPoint { bucketStart: string; n: number }
@@ -167,7 +179,7 @@ const EXPORT_MAX_ROWS = 20000; // matches the database function's own defensive 
  * wrong, because the row-shaping decision is made once, in the function.
  */
 export async function exportResponsesCsv(
-  slug: string, organizationId: string | null, filters: ResponseFilters = {},
+  slug: string, organizationId: string | null, filters: ResponseFilters = {}, format: 'csv' | 'xls' = 'csv',
 ): Promise<{ csv: string; rows: number; identityIncluded: boolean }> {
   const all: Record<string, unknown>[] = [];
   let offset = 0;
@@ -183,12 +195,12 @@ export async function exportResponsesCsv(
   // The audit event records that an export happened, by whom, of what shape -
   // never the response contents themselves (Part 16).
   await recordAudit(organizationId, 'DATA_EXPORTED', {
-    survey: slug, format: 'csv', rows: all.length,
+    survey: slug, format, rows: all.length,
     identity_included: identityIncluded,
     export_type: identityIncluded ? 'identified' : 'de-identified',
   });
 
-  return { csv: toCsv(all), rows: all.length, identityIncluded };
+  return { csv: format === 'xls' ? toExcelXml(all, slug) : toCsv(all), rows: all.length, identityIncluded };
 }
 
 export function downloadFile(filename: string, contents: string, type = 'text/csv;charset=utf-8'): void {

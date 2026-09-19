@@ -5,11 +5,12 @@ import { getSurvey, listOrganizations, listVersions, type Organization, type Sur
 import { useAdminSession } from '../AdminGate';
 import {
   fetchColumnsDistribution, fetchCrosstab, fetchMultiselectDistribution, fetchNumericSummary, fetchOverview,
-  fetchRankingSummary, fetchSegmentSummary, fetchTextCount, fetchTrend, NotAuthorised,
+  fetchFunnel, fetchRankingSummary, fetchSegmentSummary, fetchTextCount, fetchTrend, NotAuthorised,
   type AnalyticsOverview, type ChoiceDistribution, type Crosstab, type MultiselectDistribution, type NumericSummary,
   type RankingSummaryRow, type SegmentDimension, type SegmentSummary, type TrendPoint,
 } from '../analyticsStore';
 import { fillScale, meanFromDistribution, npsFromDistribution } from '../npsMath';
+import { biggestDrop, buildFunnel } from '../funnel';
 import { groupMatrixRows, questionColumns, type ColumnMeta } from '../questionMeta';
 import { averagePosition } from '../matrixMath';
 import { PRIVACY_MODE_REMINDER, usesInvitationLinks } from '../labels';
@@ -36,6 +37,7 @@ export default function SurveyAnalytics() {
   const [textCounts, setTextCounts] = useState<Record<string, number>>({});
   const [numeric, setNumeric] = useState<Record<string, NumericSummary>>({});
   const [ranking, setRanking] = useState<Record<string, RankingSummaryRow[]>>({});
+  const [funnel, setFunnel] = useState<{ steps: { step: number; n: number }[]; since: string | null } | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   const columns: ColumnMeta[] = useMemo(() => (survey ? questionColumns(survey.definition) : []), [survey]);
@@ -78,6 +80,8 @@ export default function SurveyAnalytics() {
       ]);
       setChoiceDist(dist);
       setNumeric(Object.fromEntries(nums.map(n => [n.column, n])));
+
+      void fetchFunnel(slug).then(setFunnel).catch(() => setFunnel({ steps: [], since: null }));
 
       const rankCols = columns.filter(c => c.kind === 'ranking');
       const rankResults = await Promise.all(rankCols.map(c => fetchRankingSummary(slug, c.column, versionNum)));
@@ -161,6 +165,12 @@ export default function SurveyAnalytics() {
             {trend === null ? <Skeleton className="h-24 w-full" /> : <TrendChart points={trend} />}
           </section>
 
+          {survey && funnel && (
+            <section className="mt-8">
+              <FunnelPanel def={survey.definition} funnel={funnel} responses={overview?.responses ?? 0} />
+            </section>
+          )}
+
           {overview && overview.responses === 0 ? (
             <div className="mt-8">
               <p className="rounded-lg border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
@@ -236,6 +246,53 @@ function QuestionAnalysisCard({
           {textCounts[col.column] ?? 0} text response{(textCounts[col.column] ?? 0) === 1 ? '' : 's'} collected.
           <span className="ml-1.5 text-xs text-muted-foreground">Individual answers are available to analysts in Raw Responses, not summarised here.</span>
         </p>
+      )}
+    </div>
+  );
+}
+
+function FunnelPanel({ def, funnel, responses }: {
+  def: SurveyRow['definition']; funnel: { steps: { step: number; n: number }[]; since: string | null }; responses: number;
+}) {
+  const rows = buildFunnel(def, funnel.steps, responses);
+  const opened = rows[0].n;
+  const worst = biggestDrop(rows);
+  const conversion = opened > 0 ? Math.min(100, Math.round((responses / opened) * 1000) / 10) : null;
+  return (
+    <div>
+      <h2 className="mb-1 text-sm font-medium text-foreground">Where people drop off</h2>
+      <p className="mb-3 text-xs text-muted-foreground">
+        How many people opened the survey and how many reached each page. Only daily counts are kept - nothing that identifies a visitor.
+        {funnel.since ? ` Counting began ${new Date(funnel.since).toLocaleDateString()}, so earlier responses are not included in the opened figure.` : ''}
+      </p>
+      {opened === 0 ? (
+        <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+          No visits recorded yet. They appear here as people open the survey.
+        </p>
+      ) : (
+        <>
+          <div className="space-y-2.5 rounded-lg border border-border p-4">
+            {rows.map(r => (
+              <div key={r.key} title={`${r.label}: ${r.n}${r.pctOfOpened !== null ? ` (${r.pctOfOpened}% of those who opened)` : ''}`}>
+                <div className="mb-0.5 flex items-baseline justify-between gap-2 text-xs">
+                  <span className="min-w-0 truncate text-foreground">{r.label}</span>
+                  <span className="shrink-0 tabular-nums text-muted-foreground">
+                    {r.n.toLocaleString()}{r.pctOfOpened !== null ? ` · ${r.pctOfOpened}%` : ''}
+                    {r.lostFromPrevious ? <span className="ml-2 text-destructive/80">−{r.lostFromPrevious.toLocaleString()}</span> : null}
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${Math.max(2, r.pctOfOpened ?? 0)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            {conversion !== null && <>{conversion}% of people who opened it submitted. </>}
+            {worst && <>Most people stopped at <strong className="text-foreground">{worst.label}</strong> (−{worst.lostFromPrevious}). </>}
+            A page reached by more people than the one before it means skip logic routed some people around a page.
+          </p>
+        </>
       )}
     </div>
   );

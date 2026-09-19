@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import SurveyRenderer from '../engine/SurveyRenderer';
 import { hiddenFromSearch } from '../engine/progress';
+import { recordSurveyStep } from '../engine/surveyStore';
 import { UploadContext } from '../engine/uploads';
 import {
   markInvitationStarted, resolveInvitation, submitInvitedResponse, type ResolvedInvitation, type SubmitProblem,
@@ -76,6 +77,7 @@ export default function InvitePage() {
       definition={state.invitation.definition}
       privacyMode={state.invitation.privacyMode}
       progressKey={`invite:${token.slice(0, 12)}`}
+      onStep={step => recordSurveyStep(state.invitation.slug, step)}
       hiddenValues={hiddenFromSearch(state.invitation.definition, window.location.search)}
       onStart={() => { void markInvitationStarted(token); }}
       onSubmit={async answers => {

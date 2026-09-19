@@ -72,6 +72,11 @@ Beyond the basic and scale types: **constant sum** (split a total such as 100 po
 - **Per-option display rules**: give any single option its own rule ("show Delhi only when Region is North"). A choice that stops being offered after someone changes an earlier answer is refused at submit.
 - Constant-sum, multiple-text and matrix questions store one column per row, numbered by position. Add rows at the end; reordering after responses exist is blocked at Publish.
 
+## Drop-off and exports
+
+- **Where people drop off** (a survey's Analytics page): how many people opened the survey and how many reached each page, with the biggest drop called out. Only daily counts are stored - nothing that identifies a visitor - so it works for anonymous surveys. Counting starts from when this feature went live.
+- **Export Excel** (Response Centre, next to Export CSV): a spreadsheet with real numbers in number cells and text kept as text (so codes such as 00123 keep their zeros and an answer beginning with `=` can never run as a formula). It follows the same privacy rules and audit entry as the CSV export.
+
 ## Publish
 
 Once you're happy with the draft, **Publish**. This locks in the live version respondents will see. You can still make additive changes later (add a question, add a matrix row) without breaking existing responses; changes that would reinterpret already-collected data (renaming a question, changing its type) are blocked with a clear explanation of why.

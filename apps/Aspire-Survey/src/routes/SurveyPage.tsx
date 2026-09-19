@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import SurveyRenderer from '../engine/SurveyRenderer';
-import { fetchAvailability, loadSurvey, submitResponse, SurveyNotFound, type Availability, type SurveyRecord } from '../engine/surveyStore';
+import { fetchAvailability, loadSurvey, recordSurveyStep, submitResponse, SurveyNotFound, type Availability, type SurveyRecord } from '../engine/surveyStore';
 import { hiddenFromSearch } from '../engine/progress';
 import { UploadContext } from '../engine/uploads';
 
@@ -83,6 +83,7 @@ export default function SurveyPage() {
       definition={state.record.definition}
       privacyMode={state.record.privacyMode}
       progressKey={`survey:${state.record.slug}:v${state.record.currentVersion}`}
+      onStep={step => recordSurveyStep(state.record.slug, step)}
       hiddenValues={hiddenFromSearch(state.record.definition, window.location.search)}
       onSubmit={answers => submitResponse(state.record, answers)}
     />
