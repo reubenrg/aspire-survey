@@ -257,7 +257,8 @@ function FunnelPanel({ def, funnel, responses }: {
   const rows = buildFunnel(def, funnel.steps, responses);
   const opened = rows[0].n;
   const worst = biggestDrop(rows);
-  const conversion = opened > 0 ? Math.min(100, Math.round((responses / opened) * 1000) / 10) : null;
+  // Only meaningful when every response was also counted as an open (i.e. counting began before the first response).
+  const conversion = opened > 0 && responses <= opened ? Math.round((responses / opened) * 1000) / 10 : null;
   return (
     <div>
       <h2 className="mb-1 text-sm font-medium text-foreground">Where people drop off</h2>

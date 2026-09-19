@@ -27,13 +27,19 @@ export function buildFunnel(
   def.sections.forEach((s, i) => raw.push({ key: s.id, label: s.title || `Page ${i + 1}`, n: at.get(i + 1) ?? 0 }));
   raw.push({ key: 'submitted', label: 'Submitted', n: responses });
 
-  return raw.map((r, i) => ({
-    ...r,
-    pctOfOpened: opened > 0 ? Math.round((r.n / opened) * 1000) / 10 : null,
-    // Skip logic means a later page can be reached by more people than an earlier page's
-    // successor (people are routed past pages), so a negative "loss" is clamped to zero.
-    lostFromPrevious: i === 0 ? null : Math.max(0, raw[i - 1].n - r.n),
-  }));
+  return raw.map((r, i) => {
+    // "Submitted" comes from the responses themselves, which include everyone who answered
+    // BEFORE opens were counted. When that is more than the counted opens the two are not
+    // comparable, so no percentage or loss is shown for it rather than a nonsense figure.
+    const incomparable = r.key === 'submitted' && r.n > opened;
+    return {
+      ...r,
+      pctOfOpened: opened > 0 && !incomparable ? Math.round((r.n / opened) * 1000) / 10 : null,
+      // Skip logic means a later page can be reached by more people than an earlier page's
+      // successor (people are routed past pages), so a negative "loss" is clamped to zero.
+      lostFromPrevious: i === 0 || incomparable ? null : Math.max(0, raw[i - 1].n - r.n),
+    };
+  });
 }
 
 /** The page where the most people stopped: the biggest drop between two consecutive rows, or null with too little data. */
