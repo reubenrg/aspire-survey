@@ -11,11 +11,13 @@
 - 18 files reachable only from that survey were deleted (its app component, 12 step screens, data, submit code, an unused UI primitive and an unused seed definition). The source remains in git history.
 - `index.html`'s title was still "S2M Health Employees Survey" on every respondent page; it is now "Aspire Surveys".
 
-## Data reset — STATUS: NOT YET RUN (waiting on founder approval)
+## Data reset — STATUS: RUN on 2026-09-19
 
-The founder asked to remove all created customers and surveys and start fresh. The database deletion was **blocked by the tool's safety classifier as a mass delete** and was deliberately not worked around. The exact, guarded script is [`apps/supabase/ops/reset_platform_data.sql`](../apps/supabase/ops/reset_platform_data.sql). It is a one-time operation, **not** a migration (a migration would be replayed on every fresh database).
+The founder asked to remove all created customers and surveys and start fresh. The first attempt was blocked by the tool's safety classifier as a mass delete and was deliberately not worked around; after the founder confirmed in chat that everything was test data, the guarded script [`apps/supabase/ops/reset_platform_data.sql`](../apps/supabase/ops/reset_platform_data.sql) was run exactly as committed, in one transaction. It is a one-time operation, **not** a migration (a migration would be replayed on every fresh database). The run recorded a `PLATFORM_RESET` entry in the audit log.
 
-Inventory of what it would delete, taken 2026-09-19:
+Verified afterwards: 0 customers, surveys, versions, employees, invitations and campaigns; no leftover response tables; 15 built-in templates, 2 active global owners, 5 platform settings and the legacy `survey_responses` table (2 rows) intact; `/s/engine-demo` now reports "Survey not available".
+
+Inventory of what was deleted (the platform is now empty):
 
 | Customer | Active | Surveys | Employees |
 |---|---|---|---|
@@ -28,11 +30,11 @@ Inventory of what it would delete, taken 2026-09-19:
 | Sundaram Home | yes | 0 | 0 |
 | SH | yes | 1 (`behaviour-change-mu56zo1q`, 232 invitations) | **232** |
 
-Totals: 8 customers, 12 surveys, 11 survey versions, 472 employees, 472 invitations, 9 physical response tables holding 5 QA rows. **DNC and SH look like real imported rosters, not test data** — re-import from the source CSVs if they are ever needed again; nothing else can restore them.
+Totals: 8 customers, 12 surveys, 11 survey versions, 472 employees, 472 invitations, 9 physical response tables holding 5 QA rows. DNC and SH looked like real imported rosters; the founder confirmed all of it was test data. The deletion is irreversible (no confirmed backups) — re-import from source CSVs if any of it is ever needed.
 
 **Kept on purpose:** the two team owners, the 15 built-in templates, platform settings, audit history, and the legacy `public.survey_responses` table (2 S2M respondent rows — a separate decision).
 
-**Until the reset runs**, the old test surveys still exist. Only `engine-demo` (a demo survey) is publicly reachable by open link on the production domain; the rest are token-only, inactive, or unpublished.
+**Open decision:** the legacy `public.survey_responses` table still holds 2 S2M respondent rows. The founder said "all are only for testing" but that table was deliberately not included in the reset; delete it only on an explicit ask.
 
 ## Founder actions (not possible from the tooling used to build this)
 
