@@ -1,5 +1,4 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import App from './App';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import SurveyPage from './routes/SurveyPage';
 import InvitePage from './routes/InvitePage';
 import TestInvitePage from './routes/TestInvitePage';
@@ -27,15 +26,16 @@ import { AdminEditor } from './routes/AdminPages';
 import ReportPage from './admin/ReportPage';
 
 /**
- * `/` stays the original hand-written S2M survey, deliberately: it is live,
- * frozen and respondent-facing, so it keeps its own code path rather than being
- * migrated onto the engine. Everything the admin builds lives at /s/:slug.
+ * The original hand-written S2M survey that used to live at `/` was retired on
+ * 2026-09-19 (its source is in git history). `/` now goes to the admin
+ * sign-in; respondents only ever arrive at /s/:slug (open link), /r/:token
+ * (personal invitation) or /t/:token (campaign test send).
  */
 export default function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<App />} />
+        <Route path="/" element={<Navigate to="/admin" replace />} />
         <Route path="/s/:slug" element={<SurveyPage />} />
         <Route path="/r/:token" element={<InvitePage />} />
         <Route path="/t/:token" element={<TestInvitePage />} />

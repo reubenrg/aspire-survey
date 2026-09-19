@@ -51,11 +51,9 @@ export default function AdminGate({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  // The browser tab title otherwise falls back to index.html's static
-  // <title>, which this one Vite build also serves for the frozen legacy
-  // S2M respondent routes - setting it dynamically here, scoped to exactly
-  // what AdminGate wraps (every /admin/* route, sign-in screen included),
-  // gives Admin the right title without touching that shared default.
+  // index.html's static <title> is already "Aspire Surveys"; this keeps the
+  // title correct on every /admin/* route (sign-in screen included) even if a
+  // page below ever sets its own and navigates away.
   useEffect(() => {
     const previous = document.title;
     document.title = 'Aspire Surveys';

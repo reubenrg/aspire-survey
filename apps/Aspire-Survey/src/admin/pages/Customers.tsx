@@ -191,7 +191,7 @@ function CustomerDialog({
           <Field label="Name" hint={!customer && name.trim() ? `Web address: /${slugify(name) || '—'}` : undefined}>
             <input
               autoFocus required value={name} onChange={e => setName(e.target.value)}
-              placeholder="S2M Health" className={inputCls}
+              placeholder="e.g. Acme Corporation" className={inputCls}
             />
           </Field>
 
