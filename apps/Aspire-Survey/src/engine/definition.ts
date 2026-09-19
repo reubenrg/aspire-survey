@@ -167,8 +167,17 @@ export function buildRow(def: SurveyDefinition, answers: Answers): Record<string
     }
   });
 
+  // Hidden fields: whatever the link carried, trimmed and capped, or null.
+  for (const id of def.hiddenFields ?? []) {
+    const v = answers[id];
+    row[defaultColumn(id)] = typeof v === 'string' && v.trim() !== '' ? v.trim().slice(0, HIDDEN_FIELD_MAX) : null;
+  }
+
   return row;
 }
+
+/** Longest value a hidden field will store: a link parameter is attacker-controlled text. */
+export const HIDDEN_FIELD_MAX = 500;
 
 /** Every column the definition writes, in order. Used by the SQL generator. */
 export function columnsFor(def: SurveyDefinition): { name: string; type: 'text' | 'text[]' }[] {
@@ -189,5 +198,6 @@ export function columnsFor(def: SurveyDefinition): { name: string; type: 'text' 
       }
     }
   }
+  for (const id of def.hiddenFields ?? []) cols.push({ name: defaultColumn(id), type: 'text' });
   return cols;
 }

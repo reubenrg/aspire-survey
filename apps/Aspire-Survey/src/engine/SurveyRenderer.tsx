@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import EngineHeader from './EngineHeader';
 import SurveyToaster from '../components/SurveyToaster';
@@ -12,6 +12,7 @@ import { firstSectionIndex, nextSectionIndex, sectionPath, visibleQuestions } fr
 import { validateSection } from './validation';
 import { pipe } from './logic';
 import { newSeed, seededShuffle } from './randomize';
+import { clearProgress, loadProgress, progressFits, saveProgress, type SavedProgress } from './progress';
 import { RESPONDENT_PRIVACY_NOTICE, type EnginePrivacyMode } from './privacyNotices';
 import type { Answers, AnswerValue, SurveyDefinition } from './types';
 
@@ -23,6 +24,13 @@ interface Props {
   privacyMode?: EnginePrivacyMode;
   /** Fired once, the moment the respondent leaves the welcome screen. Omit where there's no invitation to mark (e.g. an open /s/:slug survey, or the Builder's Preview). */
   onStart?: () => void;
+  /**
+   * Identifies this respondent's saved place (the survey slug, or the invitation
+   * token). Omit where saving makes no sense, e.g. the Builder's own Preview.
+   */
+  progressKey?: string;
+  /** Values from the survey link for the definition's hidden fields. */
+  hiddenValues?: Record<string, string>;
 }
 
 export default function SurveyRenderer(props: Props) {
@@ -36,7 +44,7 @@ export default function SurveyRenderer(props: Props) {
   );
 }
 
-function SurveyBody({ definition, onSubmit, privacyMode, onStart }: Props) {
+function SurveyBody({ definition, onSubmit, privacyMode, onStart, progressKey, hiddenValues }: Props) {
   const { lang } = useLang();
   const t = useT();
   // 'welcome' -> a page (index into definition.sections) -> 'thanks'. Pages are
@@ -45,12 +53,41 @@ function SurveyBody({ definition, onSubmit, privacyMode, onStart }: Props) {
   const [stage, setStage] = useState<'welcome' | 'section' | 'thanks'>('welcome');
   const [index, setIndex] = useState(0);
   const [history, setHistory] = useState<number[]>([]);
-  const [answers, setAnswers] = useState<Answers>({});
+  const [answers, setAnswers] = useState<Answers>(() => ({ ...(hiddenValues ?? {}) }));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [seed] = useState(newSeed);
 
   const total = definition.sections.length;
+
+  const canSave = !!progressKey && definition.saveProgress !== false;
+  // Read once: a saved place is offered on the welcome screen, never applied silently.
+  const [offer, setOffer] = useState<SavedProgress | null>(() => {
+    if (!canSave) return null;
+    const p = loadProgress(progressKey!);
+    return p && progressFits(p, definition) ? p : null;
+  });
+
+  useEffect(() => {
+    if (!canSave || stage !== 'section') return;
+    saveProgress(progressKey!, { answers, index, history });
+  }, [canSave, progressKey, stage, answers, index, history]);
+
+  const resume = () => {
+    if (!offer) return;
+    setAnswers({ ...offer.answers, ...(hiddenValues ?? {}) });
+    setIndex(offer.index);
+    setHistory(offer.history);
+    setStage('section');
+    setOffer(null);
+    onStart?.();
+    window.scrollTo({ top: 0 });
+  };
+
+  const startOver = () => {
+    if (canSave) clearProgress(progressKey!);
+    setOffer(null);
+  };
 
   const setAnswer = useCallback((key: string, value: AnswerValue) => {
     setAnswers(prev => ({ ...prev, [key]: value }));
@@ -115,6 +152,7 @@ function SurveyBody({ definition, onSubmit, privacyMode, onStart }: Props) {
     setIsSubmitting(true);
     try {
       await onSubmit(answers);
+      if (canSave) clearProgress(progressKey!);
       setStage('thanks');
       setErrors({});
       scrollTop();
@@ -140,6 +178,17 @@ function SurveyBody({ definition, onSubmit, privacyMode, onStart }: Props) {
           {definition.welcome.note && (
             <div className="my-6 rounded-lg border-l-4 border-l-primary/50 border border-border/60 bg-muted/40 px-4 py-3">
               <p className="text-xs leading-relaxed text-muted-foreground">{t(definition.welcome.note, lang)}</p>
+            </div>
+          )}
+          {offer && (
+            <div className="my-6 rounded-lg border border-primary/40 bg-primary/5 px-4 py-3" role="status">
+              <p className="text-sm font-medium text-foreground">
+                {t('You have an unfinished response from', lang)} {new Date(offer.savedAt).toLocaleString()}.
+              </p>
+              <div className="mt-2 flex gap-2">
+                <Button size="sm" onClick={resume}>{t('Continue where I left off', lang)}</Button>
+                <Button size="sm" variant="ghost" onClick={startOver}>{t('Start over', lang)}</Button>
+              </div>
             </div>
           )}
           {privacyMode && (
@@ -196,6 +245,11 @@ function SurveyBody({ definition, onSubmit, privacyMode, onStart }: Props) {
             />
           ))}
         </div>
+        {canSave && (
+          <p className="mt-3 text-center text-[11px] text-muted-foreground">
+            {t('Your progress is saved on this device, so you can come back to finish.', lang)}
+          </p>
+        )}
         <NavigationButtons
           onBack={history.length > 0 ? back : undefined}
           showBack={history.length > 0}

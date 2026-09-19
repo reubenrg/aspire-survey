@@ -3,7 +3,7 @@ import { Button } from '../components/ui/button';
 import { cn } from '../lib/utils';
 import SurveyRenderer from '../engine/SurveyRenderer';
 import { generateFullSql } from '../engine/generateSql';
-import { translatableStrings } from '../engine/translate';
+import { translatableStrings, translationProgress } from '../engine/translatable';
 import { tableNameFor } from '../engine/definition';
 import type { Section, SurveyDefinition } from '../engine/types';
 import { migrationForNewColumns, validateAdditive, type AdditiveIssue } from '../engine/additive';
@@ -293,19 +293,40 @@ function WelcomeEditor({ def, onChange }: { def: SurveyDefinition; onChange: (d:
 function TranslationsPanel({ def, onChange }: { def: SurveyDefinition; onChange: (d: SurveyDefinition) => void }) {
   const strings = useMemo(() => translatableStrings(def), [def]);
   const i18n = def.i18n ?? {};
-  const done = strings.filter(s => i18n[s]?.ta && i18n[s]?.hi).length;
+  const progress = useMemo(() => translationProgress(def), [def]);
+  const [onlyMissing, setOnlyMissing] = useState(false);
+  const shown = onlyMissing ? strings.filter(s => !(i18n[s]?.ta?.trim() && i18n[s]?.hi?.trim())) : strings;
 
   const set = (text: string, lang: 'ta' | 'hi', value: string) =>
     onChange({ ...def, i18n: { ...i18n, [text]: { ...i18n[text], [lang]: value || undefined } } });
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        {done} of {strings.length} strings translated. Anything left blank shows the English text
-        rather than a missing-key placeholder, so an untranslated survey still works.
-      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {progress.map(p => (
+          <div key={p.lang} className="rounded-lg border border-border px-3 py-2.5">
+            <div className="mb-1.5 flex items-baseline justify-between text-sm">
+              <span className="font-medium text-foreground">{p.lang === 'ta' ? 'தமிழ் (Tamil)' : 'हिन्दी (Hindi)'}</span>
+              <span className="tabular-nums text-muted-foreground">{p.percent}% · {p.done} of {p.total}</span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
+              <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${p.percent}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          Anything left blank shows the English text rather than a missing-key placeholder, so an untranslated survey still works.
+        </p>
+        <label className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+          <input type="checkbox" checked={onlyMissing} onChange={e => setOnlyMissing(e.target.checked)} className="h-3.5 w-3.5 accent-primary" />
+          Only untranslated
+        </label>
+      </div>
       <div className="space-y-3">
-        {strings.map(text => (
+        {shown.length === 0 && <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">Everything is translated.</p>}
+        {shown.map(text => (
           <div key={text} className="rounded-lg border border-border p-3">
             <p className="mb-2 text-sm text-foreground">{text}</p>
             <div className="grid gap-2 sm:grid-cols-2">

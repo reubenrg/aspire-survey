@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import SurveyRenderer from '../engine/SurveyRenderer';
-import { loadSurvey, submitResponse, SurveyNotFound, type SurveyRecord } from '../engine/surveyStore';
+import { fetchAvailability, loadSurvey, submitResponse, SurveyNotFound, type Availability, type SurveyRecord } from '../engine/surveyStore';
+import { hiddenFromSearch } from '../engine/progress';
 
 type State =
   | { status: 'loading' }
-  | { status: 'ready'; record: SurveyRecord }
+  | { status: 'ready'; record: SurveyRecord; availability: Availability }
   | { status: 'missing' }
   | { status: 'error'; message: string };
 
@@ -18,7 +19,10 @@ export default function SurveyPage() {
     let cancelled = false;
     setState({ status: 'loading' });
     loadSurvey(slug)
-      .then(record => { if (!cancelled) setState({ status: 'ready', record }); })
+      .then(async record => {
+        const availability = await fetchAvailability(slug);
+        if (!cancelled) setState({ status: 'ready', record, availability });
+      })
       .catch(err => {
         if (cancelled) return;
         if (err instanceof SurveyNotFound) setState({ status: 'missing' });
@@ -54,13 +58,20 @@ export default function SurveyPage() {
     );
   }
 
-  if (state.record.closedAt) {
+  if (state.record.closedAt || state.availability !== 'open') {
+    const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : null);
+    const copy: Record<Availability, [string, string]> = {
+      open: ['This survey has closed', 'This survey is not currently accepting responses.'],
+      closed: ['This survey has closed', 'This survey is not currently accepting responses.'],
+      not_open_yet: ['This survey has not opened yet', when(state.record.opensAt) ? `It opens on ${when(state.record.opensAt)}. Please come back then.` : 'Please come back later.'],
+      ended: ['This survey has ended', when(state.record.closesAt) ? `It stopped taking responses on ${when(state.record.closesAt)}.` : 'It is no longer accepting responses.'],
+      full: ['This survey is full', 'It has reached its response limit and is no longer accepting responses. Thank you for your interest.'],
+    };
+    const [title, body] = copy[state.record.closedAt ? 'closed' : state.availability];
     return (
       <Centered>
-        <h1 className="text-xl font-display text-foreground mb-2">This survey has closed</h1>
-        <p className="text-sm text-muted-foreground">
-          This survey is not currently accepting responses.
-        </p>
+        <h1 className="text-xl font-display text-foreground mb-2">{title}</h1>
+        <p className="text-sm text-muted-foreground">{body}</p>
       </Centered>
     );
   }
@@ -69,6 +80,8 @@ export default function SurveyPage() {
     <SurveyRenderer
       definition={state.record.definition}
       privacyMode={state.record.privacyMode}
+      progressKey={`survey:${state.record.slug}:v${state.record.currentVersion}`}
+      hiddenValues={hiddenFromSearch(state.record.definition, window.location.search)}
       onSubmit={answers => submitResponse(state.record, answers)}
     />
   );

@@ -274,6 +274,14 @@ export interface SurveyDefinition {
    * constraint, and a repeat submission is reported back as a duplicate.
    */
   uniqueBy?: string;
+  /**
+   * Values carried in the survey link (`?source=email&campaign=q3`), stored with the
+   * response in their own columns. Each entry is a parameter name; it becomes a text
+   * column named like a question id. Respondents never see them.
+   */
+  hiddenFields?: string[];
+  /** Let respondents leave and pick up where they stopped, on the same device. Default on. */
+  saveProgress?: boolean;
 }
 
 /** Everything a respondent has answered so far, keyed by question id. */

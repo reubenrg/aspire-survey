@@ -12,6 +12,18 @@ export interface SurveyRecord {
   currentVersion: number;
   privacyMode: EnginePrivacyMode;
   closedAt: string | null;
+  opensAt: string | null;
+  closesAt: string | null;
+}
+
+/** Why a survey is or is not taking responses right now. The database decides; it never says how many. */
+export type Availability = 'open' | 'not_open_yet' | 'ended' | 'full' | 'closed';
+
+export async function fetchAvailability(slug: string): Promise<Availability> {
+  const { data, error } = await supabase.rpc('survey_availability', { p_slug: slug });
+  // If the check itself fails, do not block a respondent: the insert is still guarded by the database.
+  if (error || typeof data !== 'string') return 'open';
+  return data as Availability;
 }
 
 export class SurveyNotFound extends Error {
@@ -30,7 +42,7 @@ export class SurveyNotFound extends Error {
 export async function loadSurvey(slug: string): Promise<SurveyRecord> {
   const { data, error } = await supabase
     .from('surveys')
-    .select('slug, title, definition, table_name, published, current_version, privacy_mode, closed_at')
+    .select('slug, title, definition, table_name, published, current_version, privacy_mode, closed_at, opens_at, closes_at')
     .eq('slug', slug)
     .maybeSingle();
 
@@ -46,6 +58,8 @@ export async function loadSurvey(slug: string): Promise<SurveyRecord> {
     currentVersion: data.current_version ?? 1,
     privacyMode: data.privacy_mode as EnginePrivacyMode,
     closedAt: data.closed_at,
+    opensAt: data.opens_at ?? null,
+    closesAt: data.closes_at ?? null,
   };
 }
 
@@ -82,7 +96,7 @@ export async function submitResponse(record: SurveyRecord, answers: Answers): Pr
     // closed in the moments between loading the page and submitting it. The
     // proactive closedAt check in SurveyPage.tsx is what respondents
     // normally see; this is the backstop if that state went stale.
-    throw new Error('This survey is not currently accepting responses.');
+    throw new Error('This survey is not currently accepting responses. It may have closed, not opened yet, or reached its response limit.');
   }
   throw new Error(error.message || 'Submission failed. Please try again.');
 }

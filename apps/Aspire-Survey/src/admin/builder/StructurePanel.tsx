@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button';
 import type { QuestionType, SurveyDefinition } from '../../engine/types';
 import { QUESTION_TYPES, QUESTION_TYPE_DESCRIPTIONS, QUESTION_TYPE_LABELS } from '../../engine/questionFactory';
 import * as ops from '../builderOps';
+import BulkPasteDialog from './BulkPasteDialog';
 
 export interface Selection {
   sectionIndex: number;
@@ -28,6 +29,7 @@ interface Props {
  * the whole mechanism, not a fallback bolted onto one.
  */
 export default function StructurePanel({ def, selection, readOnly, issueSubjects, onSelect, onChange }: Props) {
+  const [pasteInto, setPasteInto] = useState<number | null>(null);
   const addSection = () => {
     onChange(ops.addSection(def));
     onSelect({ sectionIndex: def.sections.length, questionId: null });
@@ -181,8 +183,14 @@ export default function StructurePanel({ def, selection, readOnly, issueSubjects
             </ul>
 
             {!readOnly && (
-              <div className="ml-3 mt-1 pl-2">
+              <div className="ml-3 mt-1 flex flex-wrap items-center gap-x-3 pl-2">
                 <AddQuestionMenu onPick={type => addQuestion(i, type)} />
+                <button
+                  type="button" onClick={() => setPasteInto(i)}
+                  className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Paste questions
+                </button>
               </div>
             )}
           </div>
@@ -193,6 +201,17 @@ export default function StructurePanel({ def, selection, readOnly, issueSubjects
         <div className="border-t border-border p-2">
           <Button variant="outline" size="sm" className="w-full" onClick={addSection}>+ Add section</Button>
         </div>
+      )}
+
+      {pasteInto !== null && def.sections[pasteInto] && (
+        <BulkPasteDialog
+          def={def} sectionIndex={pasteInto}
+          onAdd={questions => {
+            onChange(ops.addQuestions(def, pasteInto, questions));
+            onSelect({ sectionIndex: pasteInto, questionId: questions[0].id });
+          }}
+          onClose={() => setPasteInto(null)}
+        />
       )}
     </div>
   );

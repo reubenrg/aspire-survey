@@ -6,6 +6,7 @@
  * it has ever been published. Publish runs both.
  */
 import { hasOptions, hasStringAnswer } from '../engine/questionFactory.ts';
+import { defaultColumn } from '../engine/definition.ts';
 import { normalizeLogic, pipedQuestionIds } from '../engine/logic.ts';
 import { safePattern } from '../engine/validation.ts';
 import type { Logic, Question, Section, SurveyDefinition } from '../engine/types.ts';
@@ -126,6 +127,21 @@ export function validateSurveyStructure(def: SurveyDefinition): BuilderIssue[] {
       }
     });
   });
+
+  const RESERVED = new Set(['id', 'submitted_at', 'definition_version', 'employee_id', 'resp_department', 'resp_location', 'resp_designation']);
+  const takenColumns = new Set(def.sections.flatMap(s => s.questions.map(q => (q.type === 'matrix' ? q.columnPrefix : (q.column || defaultColumn(q.id))))));
+  const seenHidden = new Set<string>();
+  for (const h of def.hiddenFields ?? []) {
+    const col = defaultColumn(h);
+    if (!/^[A-Za-z][A-Za-z0-9_]{0,39}$/.test(h)) {
+      issues.push({ severity: 'error', subject: 'survey', message: `Hidden field "${h}" must start with a letter and use only letters, numbers and underscores (40 characters at most).` });
+    } else if (RESERVED.has(col) || takenColumns.has(col) || questionsById.has(h)) {
+      issues.push({ severity: 'error', subject: 'survey', message: `Hidden field "${h}" clashes with a question or a reserved column. Choose another name.` });
+    } else if (seenHidden.has(col)) {
+      issues.push({ severity: 'error', subject: 'survey', message: `Hidden field "${h}" is listed twice.` });
+    }
+    seenHidden.add(col);
+  }
 
   for (const ref of pipedQuestionIds(def.thankYou.body)) {
     if (!questionsById.has(ref)) {

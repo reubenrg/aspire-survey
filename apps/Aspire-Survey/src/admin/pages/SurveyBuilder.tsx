@@ -20,6 +20,7 @@ import QuestionCanvas from '../builder/QuestionCanvas';
 import PropertiesPanel from '../builder/PropertiesPanel';
 import PreviewDialog from '../builder/PreviewDialog';
 import PublishDialog from '../builder/PublishDialog';
+import SurveySettingsDialog from '../builder/SurveySettingsDialog';
 import VersionHistoryPanel from '../builder/VersionHistoryPanel';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'failed';
@@ -56,6 +57,7 @@ export default function SurveyBuilder() {
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -221,6 +223,7 @@ export default function SurveyBuilder() {
             <Button variant="ghost" size="sm" onClick={doDiscardDraft}>Discard draft</Button>
           )}
           <Button variant="outline" size="sm" onClick={() => setVersionsOpen(true)}>History</Button>
+          <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>Settings</Button>
           <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)}>Preview</Button>
           {!readOnly && (
             <Button variant="outline" size="sm" onClick={() => setTemplateDialogOpen(true)}>Save as template</Button>
@@ -314,6 +317,13 @@ export default function SurveyBuilder() {
 
       {previewOpen && (
         <PreviewDialog definition={def} privacyMode={survey.privacy_mode} onClose={() => setPreviewOpen(false)} />
+      )}
+
+      {settingsOpen && (
+        <SurveySettingsDialog
+          survey={survey} def={def} readOnly={readOnly} responseCount={responseCount ?? 0}
+          onChangeDef={setDef} onSaved={() => void load()} onClose={() => setSettingsOpen(false)}
+        />
       )}
 
       {versionsOpen && (

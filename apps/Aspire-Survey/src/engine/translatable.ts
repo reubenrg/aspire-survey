@@ -44,3 +44,15 @@ export function translatableStrings(def: SurveyDefinition): string[] {
   push(def.thankYou.body);
   return out;
 }
+
+export interface LanguageProgress { lang: 'ta' | 'hi'; done: number; total: number; percent: number }
+
+/** How much of a survey is translated into each language, counting only strings that need it. */
+export function translationProgress(def: SurveyDefinition): LanguageProgress[] {
+  const strings = translatableStrings(def);
+  const own = def.i18n ?? {};
+  return (['ta', 'hi'] as const).map(lang => {
+    const done = strings.filter(t => (own[t]?.[lang] ?? '').trim() !== '').length;
+    return { lang, done, total: strings.length, percent: strings.length === 0 ? 100 : Math.round((done / strings.length) * 100) };
+  });
+}

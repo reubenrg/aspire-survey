@@ -49,7 +49,7 @@ export async function markInvitationStarted(token: string): Promise<void> {
   }
 }
 
-export type SubmitProblem = InvitationProblem | 'ALREADY_SUBMITTED' | 'EMPTY' | 'NO_TABLE';
+export type SubmitProblem = InvitationProblem | 'ALREADY_SUBMITTED' | 'EMPTY' | 'NO_TABLE' | 'FULL';
 
 /**
  * Flattens answers into the survey's actual response columns before sending,

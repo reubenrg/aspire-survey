@@ -53,6 +53,16 @@ Anything a respondent skipped is stored as empty, so a stale answer from a branc
 
 Publishing is blocked while a rule points at a question that is missing, later in the survey, or a matrix; a limit is nonsensical (minimum above maximum); or a skip rule goes backwards.
 
+## Faster building and survey settings
+
+- **Paste questions.** In the Builder's left panel, under a section, click *Paste questions*. One question per block, blank line between blocks; choices on the lines beneath. `*` at the end makes it required, `(dropdown)` / `(ranking)` / `(long)` and similar force a type, `[other]` and `[na]` add those choices, and rows plus `>` scale lines make a matrix. A live preview shows exactly what will be created before you add it.
+- **Survey settings** (the *Settings* button in the Builder):
+  - *Schedule and response limit* - an opening time, a closing time and a maximum number of responses. These apply to the live survey immediately and are enforced by the database on both the open link and invitations. The limit can overshoot by a few if many people submit at the same instant.
+  - *Hidden fields* - values carried in the link (for example `?source=email`) and stored with each response. Takes effect on Publish.
+  - *Save and continue later* - on by default. A respondent's progress stays in their own browser for 30 days; nothing is sent until they submit.
+- Respondents who arrive before opening, after closing, or once the limit is reached see a plain explanation instead of the survey.
+- The Translations tab shows how complete each language is and can filter to what is still untranslated.
+
 ## Publish
 
 Once you're happy with the draft, **Publish**. This locks in the live version respondents will see. You can still make additive changes later (add a question, add a matrix row) without breaking existing responses; changes that would reinterpret already-collected data (renaming a question, changing its type) are blocked with a clear explanation of why.

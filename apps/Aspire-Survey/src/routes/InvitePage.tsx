@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import SurveyRenderer from '../engine/SurveyRenderer';
+import { hiddenFromSearch } from '../engine/progress';
 import {
   markInvitationStarted, resolveInvitation, submitInvitedResponse, type ResolvedInvitation, type SubmitProblem,
 } from '../engine/invitationStore';
@@ -72,6 +73,8 @@ export default function InvitePage() {
     <SurveyRenderer
       definition={state.invitation.definition}
       privacyMode={state.invitation.privacyMode}
+      progressKey={`invite:${token.slice(0, 12)}`}
+      hiddenValues={hiddenFromSearch(state.invitation.definition, window.location.search)}
       onStart={() => { void markInvitationStarted(token); }}
       onSubmit={async answers => {
         const result = await submitInvitedResponse(token, state.invitation.definition, answers);
@@ -98,6 +101,8 @@ function blockedMessage(reason: SubmitProblem): string {
     case 'CLOSED':
     case 'UNAVAILABLE':
       return 'This survey is not currently accepting responses.';
+    case 'FULL':
+      return 'This survey has reached its response limit and is no longer accepting responses.';
     case 'EMPTY':
     case 'NO_TABLE':
       return 'This survey is not set up correctly yet. Please contact whoever sent you this link.';

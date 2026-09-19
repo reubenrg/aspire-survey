@@ -24,10 +24,13 @@ export interface BuilderSurvey {
   draft_updated_at: string | null;
   draft_updated_by: string | null;
   updated_at: string;
+  opens_at: string | null;
+  closes_at: string | null;
+  max_responses: number | null;
 }
 
 const COLUMNS =
-  'id, slug, title, organization_id, privacy_mode, category, published, closed_at, archived_at, current_version, definition, draft_definition, draft_updated_at, draft_updated_by, updated_at';
+  'id, slug, title, organization_id, privacy_mode, category, published, closed_at, archived_at, current_version, definition, draft_definition, draft_updated_at, draft_updated_by, updated_at, opens_at, closes_at, max_responses';
 
 function fail(error: { code?: string; message: string }, action: string): never {
   throw toDomainError(error, action);
@@ -41,6 +44,22 @@ export async function loadBuilderSurvey(slug: string): Promise<BuilderSurvey | n
     .maybeSingle();
   if (error) fail(error, 'open this survey');
   return (data as BuilderSurvey) ?? null;
+}
+
+/**
+ * Schedule and response limit apply to the live survey at once and are not part
+ * of a published version, so they are written straight to the survey row rather
+ * than through the draft.
+ */
+export async function saveSchedule(
+  surveyId: string,
+  patch: { opens_at: string | null; closes_at: string | null; max_responses: number | null },
+): Promise<void> {
+  const { error } = await supabase.from('surveys').update(patch).eq('id', surveyId);
+  if (error) {
+    if (error.code === '23514') throw new Error('The closing time must be after the opening time, and a response limit must be 1 or more.');
+    fail(error, 'change this survey\'s schedule');
+  }
 }
 
 /** The definition the Builder should show: the draft if one exists, otherwise the published definition. */

@@ -62,6 +62,15 @@ export function addQuestion(def: SurveyDefinition, sectionIndex: number, type: Q
   return { ...def, sections: def.sections.map((s, n) => (n === sectionIndex ? { ...s, questions: [...s.questions, q] } : s)) };
 }
 
+/** Appends already-built questions (from a paste) to a section. */
+export function addQuestions(def: SurveyDefinition, sectionIndex: number, questions: Question[]): SurveyDefinition {
+  if (questions.length === 0 || !def.sections[sectionIndex]) return def;
+  return {
+    ...def,
+    sections: def.sections.map((s, n) => (n === sectionIndex ? { ...s, questions: [...s.questions, ...questions] } : s)),
+  };
+}
+
 export function moveQuestion(def: SurveyDefinition, sectionIndex: number, qIndex: number, delta: number): SurveyDefinition {
   const section = def.sections[sectionIndex];
   const target = qIndex + delta;
