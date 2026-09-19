@@ -63,6 +63,15 @@ Publishing is blocked while a rule points at a question that is missing, later i
 - Respondents who arrive before opening, after closing, or once the limit is reached see a plain explanation instead of the survey.
 - The Translations tab shows how complete each language is and can filter to what is still untranslated.
 
+## More question types and dynamic options
+
+Beyond the basic and scale types: **constant sum** (split a total such as 100 points; must add up exactly), **multiple text boxes**, **heading / description** (display only, stores nothing), **full name**, **phone number**, **image choice** (pictures with labels; single or multiple), **file upload** (up to 10 MB, images / PDFs / office documents) and **signature** (drawn, stored as a small image).
+
+- Files and signatures are stored privately. Only analysts of that customer can open them, from the survey's Response Centre. Full name, phone, multiple-text, file and signature answers identify a person, so they are never charted or summarised in Analytics. Do not use them in an anonymous survey.
+- **Carry choices forward**: on any choice or ranking question, *Dynamic options → Carry choices forward* offers the options someone selected (or did not select) earlier, in the earlier question's own order. If there is nothing to offer, the question is skipped.
+- **Per-option display rules**: give any single option its own rule ("show Delhi only when Region is North"). A choice that stops being offered after someone changes an earlier answer is refused at submit.
+- Constant-sum, multiple-text and matrix questions store one column per row, numbered by position. Add rows at the end; reordering after responses exist is blocked at Publish.
+
 ## Publish
 
 Once you're happy with the draft, **Publish**. This locks in the live version respondents will see. You can still make additive changes later (add a question, add a matrix row) without breaking existing responses; changes that would reinterpret already-collected data (renaming a question, changing its type) are blocked with a clear explanation of why.

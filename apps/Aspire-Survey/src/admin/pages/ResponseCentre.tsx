@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { fileNameOf, signedUploadUrl } from '../../engine/uploads';
 import { Link, useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { useAdminSession } from '../AdminGate';
@@ -194,7 +195,7 @@ export default function ResponseCentre() {
                 {rows.map((r, i) => (
                   <tr key={i} className="cursor-pointer transition-colors hover:bg-muted/40" onClick={() => { if (r.id) void fetchResponseOne(slug, String(r.id)).then(setDetail); }}>
                     <Td className="whitespace-nowrap text-muted-foreground">{relativeTime(r.submitted_at as string)}</Td>
-                    {shownColumns.map(c => <Td key={c.column} className="max-w-[16rem] truncate">{formatCell(r[c.column])}</Td>)}
+                    {shownColumns.map(c => <Td key={c.column} className="max-w-[16rem] truncate">{cellFor(c, r[c.column])}</Td>)}
                     <Td><Button variant="ghost" size="sm">Open</Button></Td>
                   </tr>
                 ))}
@@ -229,6 +230,43 @@ export default function ResponseCentre() {
   );
 }
 
+/** File and signature answers are storage paths: show a link that fetches a short-lived signed URL, never the raw path. */
+function cellFor(c: ColumnMeta, value: unknown, detail = false): ReactNode {
+  if ((c.type === 'file' || c.type === 'signature') && typeof value === 'string' && value !== '') {
+    return <UploadedFile path={value} inline={detail && c.type === 'signature'} />;
+  }
+  return formatCell(value);
+}
+
+function UploadedFile({ path, inline }: { path: string; inline?: boolean }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!inline) return;
+    let cancelled = false;
+    void signedUploadUrl(path).then(u => { if (!cancelled) { setUrl(u); setFailed(!u); } });
+    return () => { cancelled = true; };
+  }, [path, inline]);
+
+  if (inline) {
+    if (failed) return <span className="text-destructive">Could not load the signature.</span>;
+    return url ? <img src={url} alt="Signature" className="h-20 rounded border border-border bg-white" /> : <span>Loading…</span>;
+  }
+  return (
+    <button
+      type="button"
+      onClick={e => {
+        e.stopPropagation();
+        void signedUploadUrl(path).then(u => { if (u) window.open(u, '_blank', 'noopener'); else setFailed(true); });
+      }}
+      className="text-primary hover:underline"
+    >
+      {failed ? 'Unavailable' : `Open ${fileNameOf(path)}`}
+    </button>
+  );
+}
+
 function formatCell(value: unknown): string {
   if (value === null || value === undefined || value === '') return '—';
   if (Array.isArray(value)) return value.join(', ') || '—';
@@ -257,7 +295,7 @@ function ResponseDetailDialog({
           {columns.map(c => (
             <div key={c.column}>
               <p className="text-xs font-medium text-foreground">{c.label}</p>
-              <p className="text-sm text-muted-foreground">{formatCell(row[c.column])}</p>
+              <div className="text-sm text-muted-foreground">{cellFor(c, row[c.column], true)}</div>
             </div>
           ))}
         </div>

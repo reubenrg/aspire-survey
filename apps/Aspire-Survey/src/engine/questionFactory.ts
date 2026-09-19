@@ -28,6 +28,14 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   slider: 'Slider',
   ranking: 'Ranking',
   matrix: 'Matrix / rating grid',
+  sum: 'Constant sum',
+  multitext: 'Multiple text boxes',
+  heading: 'Heading / description',
+  fullname: 'Full name',
+  phone: 'Phone number',
+  image: 'Image choice',
+  file: 'File upload',
+  signature: 'Signature',
 };
 
 export const QUESTION_TYPE_DESCRIPTIONS: Record<QuestionType, string> = {
@@ -45,28 +53,45 @@ export const QUESTION_TYPE_DESCRIPTIONS: Record<QuestionType, string> = {
   slider: 'A value picked by dragging along a scale.',
   ranking: 'Respondents put every option in order of preference.',
   matrix: 'A grid of statements rated on a shared scale (e.g. a Likert scale).',
+  sum: 'Respondents split a fixed total (such as 100 points) across several items.',
+  multitext: 'Several short labelled text boxes in one question, e.g. address lines.',
+  heading: 'A title and paragraph of text between questions. Collects no answer.',
+  fullname: 'First and last name boxes.',
+  phone: 'A phone number, checked for a plausible format.',
+  image: 'Choose one or several pictures.',
+  file: 'The respondent uploads a file (image, PDF or document).',
+  signature: 'The respondent draws their signature.',
 };
 
 /** Picker order, grouped the way people think about them: text, choice, scale, layout. */
 export const QUESTION_TYPES: QuestionType[] = [
   'text', 'textarea', 'email', 'number', 'date',
   'radio', 'checkbox', 'select', 'yesno', 'ranking',
-  'rating', 'nps', 'slider', 'matrix',
+  'rating', 'nps', 'slider', 'matrix', 'sum',
+  'fullname', 'phone', 'multitext', 'image', 'file', 'signature', 'heading',
 ];
 
 /** Types whose answer is a single, comparable value - what a `showIf` rule or a skip jump can read. */
 export function hasStringAnswer(type: QuestionType): boolean {
-  return type !== 'matrix';
+  return !NO_SINGLE_ANSWER.has(type);
+}
+
+/** Types with no single comparable answer (a grid of values, a file, or no answer at all). */
+const NO_SINGLE_ANSWER = new Set<QuestionType>(['matrix', 'sum', 'multitext', 'heading', 'file', 'signature']);
+
+/** Types stored one column per row, numbered by position: matrix, sum and multitext. */
+export function isRowType(type: QuestionType): type is 'matrix' | 'sum' | 'multitext' {
+  return type === 'matrix' || type === 'sum' || type === 'multitext';
 }
 
 /** Types that draw from a fixed list of options. */
-export function hasOptions(q: Question): q is Question & { type: 'select' | 'radio' | 'checkbox' | 'ranking'; options: string[] } {
-  return q.type === 'select' || q.type === 'radio' || q.type === 'checkbox' || q.type === 'ranking';
+export function hasOptions(q: Question): q is Question & { type: 'select' | 'radio' | 'checkbox' | 'ranking' | 'image'; options: string[] } {
+  return q.type === 'select' || q.type === 'radio' || q.type === 'checkbox' || q.type === 'ranking' || q.type === 'image';
 }
 
 /** Types that can carry `randomize`. */
 export function canRandomize(type: QuestionType): boolean {
-  return type === 'select' || type === 'radio' || type === 'checkbox' || type === 'ranking';
+  return type === 'select' || type === 'radio' || type === 'checkbox' || type === 'ranking' || type === 'image';
 }
 
 export function newQuestion(section: Section, type: QuestionType = 'text'): Question {
@@ -90,6 +115,14 @@ function blankOfType(id: string, type: QuestionType): Question {
     case 'radio': return { ...b, type, options: ['Option one', 'Option two'] };
     case 'checkbox': return { ...b, type, options: ['Option one', 'Option two'] };
     case 'ranking': return { ...b, type, options: ['Option one', 'Option two', 'Option three'] };
+    case 'sum': return { ...b, type, rows: ['First item', 'Second item'], total: 100, columnPrefix: defaultColumn(id) };
+    case 'multitext': return { ...b, type, rows: ['Line one', 'Line two'], columnPrefix: defaultColumn(id) };
+    case 'heading': return { id, type, label: 'Section heading' };
+    case 'fullname': return { ...b, type };
+    case 'phone': return { ...b, type };
+    case 'image': return { ...b, type, options: ['Option one', 'Option two'], images: ['', ''] };
+    case 'file': return { ...b, type, maxSizeMb: 5, accept: 'any' };
+    case 'signature': return { ...b, type };
     case 'rating': return { ...b, type, max: 5, shape: 'star' };
     case 'nps': return { ...b, type, lowLabel: 'Not at all likely', highLabel: 'Extremely likely' };
     case 'slider': return { ...b, type, min: 0, max: 100, step: 1 };
@@ -118,6 +151,14 @@ export function convertQuestion(q: Question, type: QuestionType): Question {
     case 'radio': return { ...base, type, options };
     case 'checkbox': return { ...base, type, options };
     case 'ranking': return { ...base, type, options: options.length >= 2 ? options : [...options, 'Option two'] };
+    case 'sum': return { ...base, type, rows: 'rows' in q ? q.rows : ['First item', 'Second item'], total: 100, columnPrefix: 'columnPrefix' in q ? q.columnPrefix : defaultColumn(q.id) };
+    case 'multitext': return { ...base, type, rows: 'rows' in q ? q.rows : ['Line one', 'Line two'], columnPrefix: 'columnPrefix' in q ? q.columnPrefix : defaultColumn(q.id) };
+    case 'heading': return { ...base, type, required: undefined };
+    case 'fullname': return { ...base, type };
+    case 'phone': return { ...base, type };
+    case 'image': return { ...base, type, options, images: options.map(() => '') };
+    case 'file': return { ...base, type, maxSizeMb: 5, accept: 'any' };
+    case 'signature': return { ...base, type };
     case 'rating': return { ...base, type, max: 5, shape: 'star' };
     case 'nps': return { ...base, type, lowLabel: 'Not at all likely', highLabel: 'Extremely likely' };
     case 'slider': return { ...base, type, min: 0, max: 100, step: 1 };

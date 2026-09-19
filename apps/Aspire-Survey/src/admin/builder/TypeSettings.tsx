@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
 import { cn } from '../../lib/utils';
-import type { Question } from '../../engine/types';
+import type { Logic, OptionExtras, Question } from '../../engine/types';
+import { hasOptions } from '../../engine/questionFactory';
+import { LogicEditor } from './ConditionEditor';
+import ImageOptionsEditor from './ImageOptionsEditor';
 import { defaultColumn } from '../../engine/definition';
 import { canRandomize } from '../../engine/questionFactory';
 import InlineListEditor from './InlineListEditor';
@@ -18,6 +21,8 @@ interface Props {
   question: Question;
   readOnly: boolean;
   onChange: (q: Question) => void;
+  /** Questions before this one; needed for carry-forward and per-option rules. Omit where there is no survey (the library). */
+  earlier?: Question[];
 }
 
 const num = (v: string): number | undefined => (v === '' ? undefined : Number(v));
@@ -27,7 +32,7 @@ const num = (v: string): number | undefined => (v === '' ? undefined : Number(v)
  * formats, scales. Shared by the Builder's properties panel and the older
  * /admin/:slug editor so both offer exactly what the engine supports.
  */
-export default function TypeSettings({ question: q, readOnly, onChange }: Props) {
+export default function TypeSettings({ question: q, readOnly, onChange, earlier }: Props) {
   const set = (patch: Record<string, unknown>) => onChange({ ...q, ...patch } as Question);
   const numberInput = (key: string, value: number | undefined, extra?: { min?: number; max?: number; step?: number }) => (
     <input
@@ -125,7 +130,10 @@ export default function TypeSettings({ question: q, readOnly, onChange }: Props)
     case 'ranking':
       return (
         <>
-          <Field label="Options" hint="Press Enter to add the next one. Pasting several lines at once adds them all.">
+          <Field
+            label="Options"
+            hint={q.optionsFrom ? 'These are used only if the earlier question has nothing to carry forward.' : 'Press Enter to add the next one. Pasting several lines at once adds them all.'}
+          >
             <InlineListEditor
               readOnly={readOnly}
               items={q.options}
@@ -134,6 +142,7 @@ export default function TypeSettings({ question: q, readOnly, onChange }: Props)
               placeholder="Option text"
             />
           </Field>
+          <OptionExtrasEditor q={q} earlier={earlier ?? []} readOnly={readOnly} onChange={extras => set(extras as Record<string, unknown>)} />
 
           {(q.type === 'radio' || q.type === 'checkbox') && q.options.includes('Other') && (
             <Field label="Column for the “Other” free text" hint="Needed for the box that appears when someone picks Other.">
@@ -170,6 +179,102 @@ export default function TypeSettings({ question: q, readOnly, onChange }: Props)
           )}
         </>
       );
+
+    case 'image':
+      return (
+        <>
+          <Field label="Pictures and choices" hint="Each choice has a label and a picture. Paste a picture address or upload one.">
+            <ImageOptionsEditor
+              readOnly={readOnly} options={q.options} images={q.images ?? []}
+              onChange={(options, images) => set({ options, images })}
+            />
+          </Field>
+          <Toggle label="Allow more than one picture" checked={!!q.multiple} disabled={readOnly} onChange={multiple => set({ multiple: multiple || undefined })} />
+          {q.multiple && (
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Minimum">{numberInput('minSelections', q.minSelections, { min: 0, max: q.options.length || undefined })}</Field>
+              <Field label="Maximum">{numberInput('maxSelections', q.maxSelections, { min: 1, max: q.options.length || undefined })}</Field>
+            </div>
+          )}
+          <Toggle label="Show pictures in a random order" checked={!!q.randomize} disabled={readOnly} onChange={randomize => set({ randomize: randomize || undefined })} />
+          <OptionExtrasEditor q={q} earlier={earlier ?? []} readOnly={readOnly} onChange={extras => set(extras as Record<string, unknown>)} />
+        </>
+      );
+
+    case 'sum':
+      return (
+        <>
+          <Field label="Items" hint="Each item becomes a numbered column, so add to the end rather than reordering once responses exist.">
+            <InlineListEditor readOnly={readOnly} items={q.rows} onChange={rows => set({ rows })} addLabel="+ Add item" placeholder="Item" />
+          </Field>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Values must add up to">
+              <input disabled={readOnly} type="number" min={1} value={q.total} onChange={e => set({ total: Number(e.target.value) || 100 })} className={inputCls} />
+            </Field>
+            <Field label="Unit">{textInput('unit', q.unit, 'points, %, hours…')}</Field>
+          </div>
+          <Field label="Column prefix">
+            <input disabled={readOnly} value={q.columnPrefix} onChange={e => set({ columnPrefix: e.target.value })} className={cn(inputCls, 'font-mono text-xs')} />
+          </Field>
+        </>
+      );
+
+    case 'multitext':
+      return (
+        <>
+          <Field label="Boxes" hint="Each box becomes a numbered column.">
+            <InlineListEditor readOnly={readOnly} items={q.rows} onChange={rows => set({ rows })} addLabel="+ Add box" placeholder="Box label" />
+          </Field>
+          <Field label="Column prefix">
+            <input disabled={readOnly} value={q.columnPrefix} onChange={e => set({ columnPrefix: e.target.value })} className={cn(inputCls, 'font-mono text-xs')} />
+          </Field>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">These answers can identify a person, so they are never charted or summarised in Analytics.</p>
+        </>
+      );
+
+    case 'heading':
+      return (
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          The question text above is the heading and the help text is the paragraph under it. A heading collects no answer and is
+          not stored.
+        </p>
+      );
+
+    case 'phone':
+      return (
+        <>
+          <Field label="Placeholder">{textInput('placeholder', q.placeholder, '+91 …')}</Field>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">A phone number identifies a person, so it is never charted or summarised in Analytics.</p>
+        </>
+      );
+
+    case 'fullname':
+      return <p className="text-[11px] leading-relaxed text-muted-foreground">Two boxes, first and last name, stored together. This identifies a person, so it is never charted or summarised in Analytics.</p>;
+
+    case 'file':
+      return (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Largest file (MB)" hint="1 to 10.">
+              <input disabled={readOnly} type="number" min={1} max={10} value={q.maxSizeMb ?? 5} onChange={e => set({ maxSizeMb: Math.min(10, Math.max(1, Number(e.target.value) || 5)) })} className={inputCls} />
+            </Field>
+            <Field label="Allowed files">
+              <select disabled={readOnly} value={q.accept ?? 'any'} onChange={e => set({ accept: e.target.value })} className={inputCls}>
+                <option value="any">Images, PDFs and documents</option>
+                <option value="images">Images only</option>
+                <option value="documents">PDFs and documents only</option>
+              </select>
+            </Field>
+          </div>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            Files are stored privately. Only people with analyst access to this customer can open them, from the Response Centre.
+            One file per question.
+          </p>
+        </>
+      );
+
+    case 'signature':
+      return <p className="text-[11px] leading-relaxed text-muted-foreground">The signature is stored as a small private image, viewable by analysts in the Response Centre.</p>;
 
     case 'yesno':
       return (
@@ -268,6 +373,71 @@ export default function TypeSettings({ question: q, readOnly, onChange }: Props)
         </>
       );
   }
+}
+
+/** Carry-forward and per-option display rules for any question with a list of options. */
+function OptionExtrasEditor({ q, earlier, readOnly, onChange }: {
+  q: Question; earlier: Question[]; readOnly: boolean; onChange: (extras: OptionExtras) => void;
+}) {
+  if (!hasOptions(q)) return null;
+  const extras = q as Question & OptionExtras;
+  const sources = earlier.filter(e => hasOptions(e));
+  const rules = extras.optionLogic ?? {};
+  const setRule = (option: string, logic: Logic | undefined) => {
+    const next = { ...rules };
+    if (logic) next[option] = logic; else delete next[option];
+    onChange({ optionLogic: Object.keys(next).length ? next : undefined });
+  };
+
+  return (
+    <details className="rounded-md border border-border/60 bg-muted/30 p-3" open={!!(extras.optionsFrom || Object.keys(rules).length)}>
+      <summary className="cursor-pointer text-xs font-medium text-foreground">Dynamic options</summary>
+      <div className="mt-3 space-y-4">
+        <Field label="Carry choices forward" hint="Offer the choices someone made (or skipped) in an earlier question instead of a fixed list.">
+          {sources.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No earlier question with options to carry forward.</p>
+          ) : (
+            <div className="grid gap-2">
+              <select
+                disabled={readOnly} value={extras.optionsFrom?.questionId ?? ''}
+                onChange={e => onChange({ optionsFrom: e.target.value ? { questionId: e.target.value, mode: extras.optionsFrom?.mode ?? 'selected' } : undefined })}
+                className={inputCls}
+              >
+                <option value="">Use this question's own options</option>
+                {sources.map(s => <option key={s.id} value={s.id}>{s.label.slice(0, 60) || s.id}</option>)}
+              </select>
+              {extras.optionsFrom && (
+                <select
+                  disabled={readOnly} value={extras.optionsFrom.mode}
+                  onChange={e => onChange({ optionsFrom: { ...extras.optionsFrom!, mode: e.target.value as 'selected' | 'unselected' } })}
+                  className={inputCls}
+                >
+                  <option value="selected">The ones they selected</option>
+                  <option value="unselected">The ones they did NOT select</option>
+                </select>
+              )}
+            </div>
+          )}
+        </Field>
+
+        <Field label="Show an option only when…" hint="Give any option its own rule. An option with no rule is always shown.">
+          <div className="space-y-2">
+            {q.options.filter(o => o.trim() !== '').map(o => (
+              <LogicEditor
+                key={o}
+                heading={o}
+                emptyLabel="Always shown"
+                logic={rules[o]}
+                sources={earlier}
+                readOnly={readOnly}
+                onChange={logic => setRule(o, logic)}
+              />
+            ))}
+          </div>
+        </Field>
+      </div>
+    </details>
+  );
 }
 
 function Toggle({ label, hint, checked, disabled, onChange }: {

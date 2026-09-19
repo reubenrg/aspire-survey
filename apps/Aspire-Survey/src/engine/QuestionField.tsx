@@ -4,11 +4,12 @@ import CheckboxSelect from '../components/CheckBoxSelect';
 import LikertMatrix from '../components/LikertMatrix';
 import TextArea from '../components/TextArea';
 import { NpsInput, RankingInput, RatingInput, SliderInput, YesNoInput } from '../components/ScaleInputs';
+import { FileUpload, FullNameInput, ImageChoice, MultiTextInput, SignaturePad, SumInput } from '../components/RichInputs';
 import { cn } from '../lib/utils';
 import type { Lang } from '../i18n/Translations';
 import { useT } from './translate';
 import type { Answers, AnswerValue, Question } from './types';
-import { matrixRows, matrixTitle, otherKey } from './definition';
+import { matrixRows, matrixTitle, namePartKey, otherKey } from './definition';
 import { pipe } from './logic';
 import { shuffleOptions } from './randomize';
 
@@ -20,6 +21,8 @@ interface Props {
   error?: string;
   /** Per-session seed for randomised option order. */
   seed: number;
+  /** The options on offer right now, when they are computed (carry-forward or per-option rules). */
+  resolvedOptions?: string[];
   lang: Lang;
 }
 
@@ -36,7 +39,7 @@ const inputCls = (error: boolean) => cn(
  * use components/ScaleInputs. Labels are translated first and piped second,
  * because the translation table is keyed by the label as authored.
  */
-export default function QuestionField({ question: q, answers, onChange, error, seed, lang }: Props) {
+export default function QuestionField({ question: q, answers, onChange, error, seed, lang, resolvedOptions }: Props) {
   const t = useT();
   const hasError = !!error;
   const value = answers[q.id];
@@ -44,7 +47,11 @@ export default function QuestionField({ question: q, answers, onChange, error, s
   const setOther = (v: string) => onChange(otherKey(q.id), v);
   const label = pipe(t(q.label, lang), answers);
   const hint = q.hint ? pipe(t(q.hint, lang), answers) : undefined;
-  const opts = (options: string[], randomize?: boolean) => (randomize ? shuffleOptions(options, seed, q.id) : options);
+  const choices = (options: string[]) => resolvedOptions ?? options;
+  const opts = (options: string[], randomize?: boolean) => {
+    const list = choices(options);
+    return randomize ? shuffleOptions(list, seed, q.id) : list;
+  };
 
   const shell = (control: ReactNode, extra?: { labelFor?: string }) => (
     <div className="space-y-2">
@@ -230,7 +237,7 @@ export default function QuestionField({ question: q, answers, onChange, error, s
       const given = Array.isArray(value) ? (value as string[]) : null;
       return shell(
         <RankingInput
-          label={label} options={q.options}
+          label={label} options={choices(q.options)}
           order={given ?? opts(q.options, q.randomize)}
           confirmed={!!given}
           showOption={o => t(o, lang)}
@@ -238,6 +245,83 @@ export default function QuestionField({ question: q, answers, onChange, error, s
         />,
       );
     }
+
+    case 'heading':
+      return (
+        <div className="space-y-1.5 border-b border-border pb-3 pt-2">
+          <h3 className="font-display text-lg text-foreground">{label}</h3>
+          {hint && <p className="text-sm leading-relaxed text-muted-foreground">{hint}</p>}
+        </div>
+      );
+
+    case 'phone':
+      return shell(
+        <input
+          id={q.id} type="tel" inputMode="tel" autoComplete="tel"
+          value={(value as string) || ''}
+          placeholder={q.placeholder ? t(q.placeholder, lang) : undefined}
+          onChange={e => onChange(q.id, e.target.value)}
+          aria-invalid={hasError || undefined}
+          className={inputCls(hasError)}
+        />,
+        { labelFor: q.id },
+      );
+
+    case 'fullname': {
+      const first = (answers[namePartKey(q.id, 'first')] as string) || '';
+      const last = (answers[namePartKey(q.id, 'last')] as string) || '';
+      return shell(
+        <FullNameInput
+          first={first} last={last} error={hasError}
+          onChange={(f, l) => {
+            onChange(namePartKey(q.id, 'first'), f);
+            onChange(namePartKey(q.id, 'last'), l);
+            onChange(q.id, `${f.trim()} ${l.trim()}`.trim());
+          }}
+        />,
+      );
+    }
+
+    case 'sum':
+      return shell(
+        <SumInput
+          rows={q.rows} total={q.total} unit={q.unit} label={label} error={hasError}
+          values={(value as Record<string, string>) || {}}
+          onChange={next => onChange(q.id, next)}
+        />,
+      );
+
+    case 'multitext':
+      return shell(
+        <MultiTextInput
+          rows={q.rows} label={label} error={hasError}
+          values={(value as Record<string, string>) || {}}
+          onChange={next => onChange(q.id, next)}
+        />,
+      );
+
+    case 'image': {
+      const list = opts(q.options, q.randomize);
+      const chosen = Array.isArray(value) ? (value as string[]) : typeof value === 'string' && value ? [value] : [];
+      return shell(
+        <ImageChoice
+          options={list} images={q.images ?? []} multiple={!!q.multiple} value={chosen} label={label}
+          showOption={o => t(o, lang)}
+          onChange={next => onChange(q.id, q.multiple ? next : next[0])}
+        />,
+      );
+    }
+
+    case 'file':
+      return shell(
+        <FileUpload
+          value={(value as string) || ''} maxSizeMb={q.maxSizeMb ?? 5} accept={q.accept ?? 'any'} label={label} error={hasError}
+          onChange={path => onChange(q.id, path)}
+        />,
+      );
+
+    case 'signature':
+      return shell(<SignaturePad value={(value as string) || ''} label={label} error={hasError} onChange={path => onChange(q.id, path)} />);
 
     case 'matrix': {
       const rows = matrixRows(q, answers);

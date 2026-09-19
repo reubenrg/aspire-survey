@@ -65,7 +65,7 @@ export default function PropertiesPanel({ question: q, earlier, readOnly, hasRes
           />
         </Field>
 
-        <TypeSettings question={q} readOnly={readOnly} onChange={onChange} />
+        <TypeSettings question={q} readOnly={readOnly} onChange={onChange} earlier={earlier} />
 
         <ConditionEditor
           question={q} earlier={earlier} readOnly={readOnly}

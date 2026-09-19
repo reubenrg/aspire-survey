@@ -67,7 +67,23 @@ function columnsForQuestion(q: Question, sectionTitle: string): ColumnMeta[] {
     case 'slider':
       return [{ column: q.column || defaultColumn(q.id), label: stripPipes(q.label), kind: 'numeric', questionId: q.id, sectionTitle, type: q.type }];
     case 'email':
+    case 'phone':
+    case 'fullname':
+    case 'file':
+    case 'signature':
       return [{ column: q.column || defaultColumn(q.id), label: stripPipes(q.label), kind: 'identifier', questionId: q.id, sectionTitle, type: q.type }];
+    case 'heading':
+      return [];
+    case 'image':
+      return [{ column: q.column || defaultColumn(q.id), label: stripPipes(q.label), kind: q.multiple ? 'multiselect' : 'choice', questionId: q.id, sectionTitle, options: q.options, type: q.type }];
+    case 'sum':
+      return q.rows.map((row, i) => ({
+        column: matrixColumn(q.columnPrefix, i), label: `${stripPipes(q.label)} - ${row}`, kind: 'numeric' as const, questionId: q.id, sectionTitle, type: q.type,
+      }));
+    case 'multitext':
+      return q.rows.map((row, i) => ({
+        column: matrixColumn(q.columnPrefix, i), label: `${stripPipes(q.label)} - ${row}`, kind: 'identifier' as const, questionId: q.id, sectionTitle, type: q.type,
+      }));
     case 'date':
     case 'text':
     case 'textarea':

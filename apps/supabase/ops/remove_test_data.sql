@@ -7,6 +7,10 @@ begin;
 drop table if exists public.survey_test_engagement_pulse;
 drop table if exists public.survey_test_customer_satisfaction;
 drop table if exists public.survey_test_onboarding_feedback;
+drop table if exists public.survey_test_all_question_types;
+-- Files uploaded to the showcase survey live in Storage bucket survey-uploads under the folder
+-- test-all-question-types/. Delete that folder from the Supabase Storage dashboard: removing the
+-- rows here would leave the stored files orphaned.
 
 delete from public.survey_invitations where survey_id in (
   select s.id from public.surveys s join public.organizations o on o.id = s.organization_id

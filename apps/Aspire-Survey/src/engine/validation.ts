@@ -7,7 +7,7 @@
  * translator, which falls back to English for anything untranslated.
  */
 import type { AnswerValue, Answers, Question, Section } from './types.ts';
-import { isBlank, matrixRows, visibleQuestions } from './definition.ts';
+import { isBlank, matrixRows, namePartKey, resolveOptions, visibleQuestions } from './definition.ts';
 
 export const REQUIRED_MESSAGE = 'This question is required.';
 
@@ -26,9 +26,17 @@ function isRealDate(iso: string): boolean {
 }
 
 /** null when fine, otherwise the message to show. `answers` is only used for matrix row lookup. */
-export function validateAnswer(q: Question, value: AnswerValue, answers: Answers): string | null {
+export function validateAnswer(q: Question, value: AnswerValue, answers: Answers, all?: Question[]): string | null {
   if (isBlank(q, value, answers)) {
     return q.required ? REQUIRED_MESSAGE : null;
+  }
+
+  // A choice that is no longer on offer (its option rule stopped holding, or the
+  // earlier answer it was carried from changed) must not be submitted.
+  if (all && 'options' in q && (q.optionsFrom || q.optionLogic)) {
+    const offered = resolveOptions(q, answers, all);
+    const chosen = Array.isArray(value) ? value : typeof value === 'string' ? [value] : [];
+    if (chosen.some(c => c !== 'Other' && !offered.includes(c))) return 'One of your choices is no longer available. Please choose again.';
   }
 
   switch (q.type) {
@@ -90,9 +98,38 @@ export function validateAnswer(q: Question, value: AnswerValue, answers: Answers
     }
     case 'ranking': {
       const given = value as string[];
-      const complete = given.length === q.options.length && q.options.every(o => given.includes(o));
+      const options = all ? resolveOptions(q, answers, all) : q.options;
+      const complete = given.length === options.length && options.every(o => given.includes(o));
       return complete ? null : 'Please rank every option.';
     }
+    case 'phone': {
+      const s = (value as string).trim();
+      const digits = s.replace(/\D/g, '').length;
+      return /^[+()\-.\s\d]+$/.test(s) && digits >= 7 && digits <= 15 ? null : 'Please enter a valid phone number.';
+    }
+    case 'fullname':
+      if (q.required && (!String(answers[namePartKey(q.id, 'first')] ?? '').trim() || !String(answers[namePartKey(q.id, 'last')] ?? '').trim())) {
+        return 'Please enter both first and last name.';
+      }
+      return null;
+    case 'sum': {
+      const given = (value as Record<string, string>) || {};
+      const nums = q.rows.map(r => (given[r] === undefined || String(given[r]).trim() === '' ? 0 : Number(given[r])));
+      if (nums.some(n => !Number.isFinite(n) || n < 0)) return 'Please enter numbers of 0 or more.';
+      const total = Math.round(nums.reduce((a, b) => a + b, 0) * 1e6) / 1e6;
+      return total === q.total ? null : `The values must add up to ${q.total}. They add up to ${total} now.`;
+    }
+    case 'image': {
+      if (!q.multiple) return null;
+      const count = (value as string[]).length;
+      if (q.minSelections && count < q.minSelections) return `Please choose at least ${q.minSelections}.`;
+      if (q.maxSelections && count > q.maxSelections) return `Please choose no more than ${q.maxSelections}.`;
+      return null;
+    }
+    case 'heading':
+    case 'multitext':
+    case 'file':
+    case 'signature':
     case 'matrix':
     case 'select':
     case 'radio':
@@ -105,10 +142,10 @@ export function validateAnswer(q: Question, value: AnswerValue, answers: Answers
  * checked, so a follow-up that has since been hidden cannot trap anyone. Also
  * catches a matrix that is only partly answered when it is not required.
  */
-export function validateSection(section: Section, answers: Answers): Record<string, string> {
+export function validateSection(section: Section, answers: Answers, all?: Question[]): Record<string, string> {
   const problems: Record<string, string> = {};
-  for (const q of visibleQuestions(section, answers)) {
-    const msg = validateAnswer(q, answers[q.id], answers);
+  for (const q of visibleQuestions(section, answers, all)) {
+    const msg = validateAnswer(q, answers[q.id], answers, all);
     if (msg) { problems[q.id] = msg; continue; }
     if (q.type === 'matrix' && !q.required) {
       const given = (answers[q.id] as Record<string, string>) || {};

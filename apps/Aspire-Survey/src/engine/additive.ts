@@ -15,12 +15,21 @@ export function allQuestions(def: SurveyDefinition): Question[] {
 }
 
 function columnOf(q: Question): string {
-  return q.type === 'matrix' ? q.columnPrefix : (q.column || defaultColumn(q.id));
+  return q.type === 'matrix' || q.type === 'sum' || q.type === 'multitext' ? q.columnPrefix : (q.column || defaultColumn(q.id));
 }
 
 /** text[] for multi-select, text for everything else. Changing this breaks the column. */
 function storageOf(q: Question): 'text' | 'text[]' {
-  return q.type === 'checkbox' || q.type === 'ranking' ? 'text[]' : 'text';
+  return q.type === 'checkbox' || q.type === 'ranking' || (q.type === 'image' && !!q.multiple) ? 'text[]' : 'text';
+}
+
+const SHAPE_LABEL = { text: 'a text column', list: 'a text[] column', rows: 'one column per row', none: 'no column' } as const;
+
+/** How a question's answer is laid out in the table: one text column, one list column, one column per row, or nothing. */
+function shapeOf(q: Question): 'text' | 'list' | 'rows' | 'none' {
+  if (q.type === 'heading') return 'none';
+  if (q.type === 'matrix' || q.type === 'sum' || q.type === 'multitext') return 'rows';
+  return storageOf(q) === 'text[]' ? 'list' : 'text';
 }
 
 /**
@@ -61,11 +70,11 @@ export function validateAdditive(
       continue;
     }
 
-    if (now.type !== old.type && storageOf(now) !== storageOf(old)) {
+    if (now.type !== old.type && old.type !== 'heading' && shapeOf(now) !== shapeOf(old)) {
       issues.push({
         severity: 'error',
         subject: old.id,
-        message: `"${old.label || old.id}" changed from ${old.type} to ${now.type}, which needs a ${storageOf(now)} column instead of ${storageOf(old)}. Add a new question instead.`,
+        message: `"${old.label || old.id}" changed from ${old.type} to ${now.type}, which stores its answer differently (${SHAPE_LABEL[shapeOf(old)]} instead of ${SHAPE_LABEL[shapeOf(now)]}). Answers already collected would be stranded. Add a new question instead.`,
       });
     }
 
@@ -77,7 +86,7 @@ export function validateAdditive(
       });
     }
 
-    if (old.type === 'matrix' && now.type === 'matrix') {
+    if ((old.type === 'matrix' || old.type === 'sum' || old.type === 'multitext') && now.type === old.type) {
       // Position is the whole contract here, so compare index by index.
       old.rows.forEach((row, i) => {
         if (now.rows[i] === row) return;
@@ -98,7 +107,7 @@ export function validateAdditive(
       });
 
       // Compared as JSON so ['ab','c'] and ['a','bc'] cannot look identical.
-      if (JSON.stringify(old.scale) !== JSON.stringify(now.scale)) {
+      if (old.type === 'matrix' && now.type === 'matrix' && JSON.stringify(old.scale) !== JSON.stringify(now.scale)) {
         issues.push({
           severity: 'warning',
           subject: old.id,

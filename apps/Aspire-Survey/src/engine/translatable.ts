@@ -25,6 +25,7 @@ export function translatableStrings(def: SurveyDefinition): string[] {
     if ('unit' in q) push(q.unit);
     if (q.type === 'yesno') { push(q.yesLabel); push(q.noLabel); }
     if (q.type === 'text') push(q.patternMessage);
+    if (q.type === 'sum' || q.type === 'multitext') q.rows.forEach(push);
     if (q.type === 'matrix') {
       q.rows.forEach(push);
       q.scale.forEach(push);

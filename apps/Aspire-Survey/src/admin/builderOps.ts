@@ -106,7 +106,7 @@ export function duplicateQuestion(def: SurveyDefinition, sectionIndex: number, q
   // or both would write into the same columns.
   const copy: Question = {
     ...src, id, showIf: undefined,
-    ...(src.type === 'matrix' ? { columnPrefix: defaultColumn(id) } : {}),
+    ...(src.type === 'matrix' || src.type === 'sum' || src.type === 'multitext' ? { columnPrefix: defaultColumn(id) } : {}),
   } as Question;
   const next = [...section.questions];
   next.splice(qIndex + 1, 0, copy);

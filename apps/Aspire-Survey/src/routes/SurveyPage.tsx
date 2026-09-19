@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import SurveyRenderer from '../engine/SurveyRenderer';
 import { fetchAvailability, loadSurvey, submitResponse, SurveyNotFound, type Availability, type SurveyRecord } from '../engine/surveyStore';
 import { hiddenFromSearch } from '../engine/progress';
+import { UploadContext } from '../engine/uploads';
 
 type State =
   | { status: 'loading' }
@@ -77,6 +78,7 @@ export default function SurveyPage() {
   }
 
   return (
+    <UploadContext.Provider value={{ slug: state.record.slug }}>
     <SurveyRenderer
       definition={state.record.definition}
       privacyMode={state.record.privacyMode}
@@ -84,6 +86,7 @@ export default function SurveyPage() {
       hiddenValues={hiddenFromSearch(state.record.definition, window.location.search)}
       onSubmit={answers => submitResponse(state.record, answers)}
     />
+    </UploadContext.Provider>
   );
 }
 

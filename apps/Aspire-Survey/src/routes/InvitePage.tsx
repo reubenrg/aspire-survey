@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import SurveyRenderer from '../engine/SurveyRenderer';
 import { hiddenFromSearch } from '../engine/progress';
+import { UploadContext } from '../engine/uploads';
 import {
   markInvitationStarted, resolveInvitation, submitInvitedResponse, type ResolvedInvitation, type SubmitProblem,
 } from '../engine/invitationStore';
@@ -70,6 +71,7 @@ export default function InvitePage() {
   }
 
   return (
+    <UploadContext.Provider value={{ slug: state.invitation.slug }}>
     <SurveyRenderer
       definition={state.invitation.definition}
       privacyMode={state.invitation.privacyMode}
@@ -86,6 +88,7 @@ export default function InvitePage() {
         throw new Error(blockedMessage(result.reason));
       }}
     />
+    </UploadContext.Provider>
   );
 }
 

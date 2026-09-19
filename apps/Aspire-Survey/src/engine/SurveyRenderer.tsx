@@ -8,7 +8,7 @@ import { Button } from '../components/ui/button';
 import { LanguageProvider, useLang } from '../i18n/LanguageContext';
 import { TranslateProvider, useT } from './translate';
 import QuestionField from './QuestionField';
-import { firstSectionIndex, nextSectionIndex, sectionPath, visibleQuestions } from './definition';
+import { firstSectionIndex, flatQuestions, nextSectionIndex, resolveOptions, sectionPath, visibleQuestions } from './definition';
 import { validateSection } from './validation';
 import { pipe } from './logic';
 import { newSeed, seededShuffle } from './randomize';
@@ -59,6 +59,7 @@ function SurveyBody({ definition, onSubmit, privacyMode, onStart, progressKey, h
   const [seed] = useState(newSeed);
 
   const total = definition.sections.length;
+  const allQuestions = useMemo(() => flatQuestions(definition), [definition]);
 
   const canSave = !!progressKey && definition.saveProgress !== false;
   // Read once: a saved place is offered on the welcome screen, never applied silently.
@@ -104,9 +105,9 @@ function SurveyBody({ definition, onSubmit, privacyMode, onStart, progressKey, h
   const section = stage === 'section' ? definition.sections[index] ?? null : null;
   const shown = useMemo(() => {
     if (!section) return [];
-    const visible = visibleQuestions(section, answers);
+    const visible = visibleQuestions(section, answers, allQuestions);
     return section.randomizeQuestions ? seededShuffle(visible, seed, section.id) : visible;
-  }, [section, answers, seed]);
+  }, [section, answers, seed, allQuestions]);
 
   // Position within the route the current answers imply, so "page 2 of 4" stays
   // honest when a skip rule shortens the survey.
@@ -134,7 +135,7 @@ function SurveyBody({ definition, onSubmit, privacyMode, onStart, progressKey, h
 
   const advance = async () => {
     if (!section) return;
-    const problems = validateSection(section, answers);
+    const problems = validateSection(section, answers, allQuestions);
     if (Object.keys(problems).length > 0) {
       setErrors(problems);
       scrollTop();
@@ -241,6 +242,7 @@ function SurveyBody({ definition, onSubmit, privacyMode, onStart, progressKey, h
               onChange={setAnswer}
               error={errors[q.id]}
               seed={seed}
+              resolvedOptions={'options' in q && (q.optionsFrom || q.optionLogic) ? resolveOptions(q, answers, allQuestions) : undefined}
               lang={lang}
             />
           ))}

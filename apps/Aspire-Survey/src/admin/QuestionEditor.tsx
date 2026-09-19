@@ -78,7 +78,7 @@ export default function QuestionEditor({
             Required
           </label>
 
-          <TypeSettings question={q} readOnly={false} onChange={onChange} />
+          <TypeSettings question={q} readOnly={false} onChange={onChange} earlier={earlier} />
 
           <LogicEditor
             heading="Show only when…"

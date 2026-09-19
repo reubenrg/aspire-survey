@@ -22,7 +22,15 @@ export type QuestionType =
   | 'date'
   | 'email'
   | 'slider'
-  | 'ranking';
+  | 'ranking'
+  | 'sum'
+  | 'multitext'
+  | 'heading'
+  | 'fullname'
+  | 'phone'
+  | 'image'
+  | 'file'
+  | 'signature';
 
 /**
  * How one answer is compared. `equals`/`notEquals` match any of `value`;
@@ -83,6 +91,17 @@ interface BaseQuestion {
   column?: string;
 }
 
+/**
+ * Extras any question with a list of options can carry.
+ *  - optionsFrom: build the list from an earlier answer instead of typing it -
+ *    the options that person selected, or the earlier question's options they did NOT select.
+ *  - optionLogic: show an individual option only when its rule holds (per-answer display logic).
+ */
+export interface OptionExtras {
+  optionsFrom?: { questionId: string; mode: 'selected' | 'unselected' };
+  optionLogic?: Record<string, Logic>;
+}
+
 export interface TextQuestion extends BaseQuestion {
   type: 'text';
   placeholder?: string;
@@ -100,7 +119,7 @@ export interface TextAreaQuestion extends BaseQuestion {
   maxLength?: number;
 }
 
-export interface SelectQuestion extends BaseQuestion {
+export interface SelectQuestion extends BaseQuestion, OptionExtras {
   type: 'select';
   options: string[];
   placeholder?: string;
@@ -108,7 +127,7 @@ export interface SelectQuestion extends BaseQuestion {
   randomize?: boolean;
 }
 
-export interface RadioQuestion extends BaseQuestion {
+export interface RadioQuestion extends BaseQuestion, OptionExtras {
   type: 'radio';
   options: string[];
   /** When 'Other' is chosen, capture free text into this extra column. */
@@ -116,7 +135,7 @@ export interface RadioQuestion extends BaseQuestion {
   randomize?: boolean;
 }
 
-export interface CheckboxQuestion extends BaseQuestion {
+export interface CheckboxQuestion extends BaseQuestion, OptionExtras {
   type: 'checkbox';
   options: string[];
   /** Floor on selections. Omit for none. */
@@ -211,11 +230,72 @@ export interface SliderQuestion extends BaseQuestion {
 }
 
 /** Respondents put every option in order of preference. Stored as an ordered text[]. */
-export interface RankingQuestion extends BaseQuestion {
+export interface RankingQuestion extends BaseQuestion, OptionExtras {
   type: 'ranking';
   options: string[];
   /** Show the options in a different random order to each respondent. */
   randomize?: boolean;
+}
+
+/**
+ * Respondents split a fixed total (default 100) across several items, e.g. "how
+ * would you divide your budget?". Like a matrix, each row is its own column,
+ * numbered by position, so treat the row list as append-only once responses exist.
+ */
+export interface SumQuestion extends BaseQuestion {
+  type: 'sum';
+  rows: string[];
+  /** What the values must add up to. */
+  total: number;
+  columnPrefix: string;
+  unit?: string;
+}
+
+/** Several short labelled text boxes in one question (address lines, contact details). One column per row. */
+export interface MultiTextQuestion extends BaseQuestion {
+  type: 'multitext';
+  rows: string[];
+  columnPrefix: string;
+}
+
+/** Display only: a title (label) and optional body text (hint). Collects nothing and stores nothing. */
+export interface HeadingQuestion extends BaseQuestion {
+  type: 'heading';
+}
+
+/** First and last name boxes; stored together as "First Last". */
+export interface FullNameQuestion extends BaseQuestion {
+  type: 'fullname';
+}
+
+export interface PhoneQuestion extends BaseQuestion {
+  type: 'phone';
+  placeholder?: string;
+}
+
+/** Pick from pictures. `images[i]` is the picture for `options[i]`; the stored answer is the option text. */
+export interface ImageQuestion extends BaseQuestion, OptionExtras {
+  type: 'image';
+  options: string[];
+  images: string[];
+  /** Allow more than one picture; stored as a list. */
+  multiple?: boolean;
+  minSelections?: number;
+  maxSelections?: number;
+  randomize?: boolean;
+}
+
+/** One uploaded file. The stored answer is the file's storage path, readable only by analysts. */
+export interface FileQuestion extends BaseQuestion {
+  type: 'file';
+  /** Up to 10. */
+  maxSizeMb?: number;
+  accept?: 'any' | 'images' | 'documents';
+}
+
+/** A drawn signature, uploaded as a small PNG; the stored answer is its storage path. */
+export interface SignatureQuestion extends BaseQuestion {
+  type: 'signature';
 }
 
 export type Question =
@@ -232,7 +312,15 @@ export type Question =
   | DateQuestion
   | EmailQuestion
   | SliderQuestion
-  | RankingQuestion;
+  | RankingQuestion
+  | SumQuestion
+  | MultiTextQuestion
+  | HeadingQuestion
+  | FullNameQuestion
+  | PhoneQuestion
+  | ImageQuestion
+  | FileQuestion
+  | SignatureQuestion;
 
 export interface Section {
   id: string;

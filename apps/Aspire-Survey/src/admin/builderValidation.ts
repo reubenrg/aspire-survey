@@ -6,7 +6,7 @@
  * it has ever been published. Publish runs both.
  */
 import { hasOptions, hasStringAnswer } from '../engine/questionFactory.ts';
-import { defaultColumn } from '../engine/definition.ts';
+import { columnsFor, defaultColumn } from '../engine/definition.ts';
 import { normalizeLogic, pipedQuestionIds } from '../engine/logic.ts';
 import { safePattern } from '../engine/validation.ts';
 import type { Logic, Question, Section, SurveyDefinition } from '../engine/types.ts';
@@ -74,6 +74,44 @@ export function validateSurveyStructure(def: SurveyDefinition): BuilderIssue[] {
         }
       }
 
+      if (q.type === 'sum' || q.type === 'multitext') {
+        if (q.rows.filter(r => r.trim() !== '').length === 0) {
+          issues.push({ severity: 'error', subject: q.id, message: `"${q.label || q.id}" has no ${q.type === 'sum' ? 'items' : 'boxes'}.` });
+        }
+        if (!q.columnPrefix || q.columnPrefix.trim() === '') {
+          issues.push({ severity: 'error', subject: q.id, message: `"${q.label || q.id}" has no column prefix.` });
+        }
+      }
+
+      if (q.type === 'image') {
+        const missing = q.options.filter((o, i) => o.trim() !== '' && !(q.images?.[i] ?? '').trim()).length;
+        if (missing > 0) {
+          issues.push({ severity: 'warning', subject: q.id, message: `"${q.label || q.id}" has ${missing} choice${missing === 1 ? '' : 's'} without a picture.` });
+        }
+        for (const [i, url] of (q.images ?? []).entries()) {
+          if (url.trim() !== '' && !/^https:\/\//i.test(url.trim())) {
+            issues.push({ severity: 'error', subject: q.id, message: `Picture ${i + 1} of "${q.label || q.id}" must be an https:// address.` });
+          }
+        }
+      }
+
+      if ('options' in q && q.optionsFrom) {
+        const from = questionsById.get(q.optionsFrom.questionId);
+        if (!from || !('options' in from)) {
+          issues.push({ severity: 'error', subject: q.id, message: `"${q.label || q.id}" carries choices forward from a question that does not exist or has no options.` });
+        } else if (positionById.get(from.id)! >= positionById.get(q.id)!) {
+          issues.push({ severity: 'error', subject: q.id, message: `"${q.label || q.id}" carries choices forward from "${from.label || from.id}", which comes after it.` });
+        }
+      }
+      if ('options' in q && q.optionLogic) {
+        for (const [option, logic] of Object.entries(q.optionLogic)) {
+          if (!q.options.includes(option)) {
+            issues.push({ severity: 'warning', subject: q.id, message: `"${q.label || q.id}" has a display rule for "${option}", which is no longer one of its options.` });
+          }
+          issues.push(...validateLogic(q.id, `${q.label || q.id} - option "${option}"`, logic, positionById.get(q.id)!, questionsById, positionById));
+        }
+      }
+
       if (q.type === 'matrix') {
         if (q.rows.filter(r => r.trim() !== '').length === 0) {
           issues.push({ severity: 'error', subject: q.id, message: `"${q.label || q.id}" has no statements/rows.` });
@@ -127,6 +165,15 @@ export function validateSurveyStructure(def: SurveyDefinition): BuilderIssue[] {
       }
     });
   });
+
+  // Two questions writing to one column would silently overwrite each other.
+  const seenColumns = new Set<string>();
+  for (const c of columnsFor(def)) {
+    if (seenColumns.has(c.name)) {
+      issues.push({ severity: 'error', subject: 'survey', message: `Two questions write to the column "${c.name}". Give one of them a different id or column prefix.` });
+    }
+    seenColumns.add(c.name);
+  }
 
   const RESERVED = new Set(['id', 'submitted_at', 'definition_version', 'employee_id', 'resp_department', 'resp_location', 'resp_designation']);
   const takenColumns = new Set(def.sections.flatMap(s => s.questions.map(q => (q.type === 'matrix' ? q.columnPrefix : (q.column || defaultColumn(q.id))))));
@@ -194,6 +241,15 @@ function validateTypeSettings(q: Question): BuilderIssue[] {
       break;
     case 'ranking':
       if (q.options.filter(o => o.trim() !== '').length < 2) err(`"${label}" needs at least two options to rank.`);
+      break;
+    case 'sum':
+      if (!(q.total > 0) || !Number.isFinite(q.total)) err(`"${label}" needs a total above zero.`);
+      break;
+    case 'file':
+      if (q.maxSizeMb !== undefined && (q.maxSizeMb < 1 || q.maxSizeMb > 10)) err(`"${label}" must allow files between 1 and 10 MB.`);
+      break;
+    case 'image':
+      if (q.minSelections !== undefined && q.maxSelections !== undefined && q.minSelections > q.maxSelections) err(`"${label}" has a minimum above its maximum.`);
       break;
     default:
       break;
