@@ -201,3 +201,52 @@ export function downloadFile(filename: string, contents: string, type = 'text/cs
   a.remove();
   URL.revokeObjectURL(url);
 }
+
+// ── Numeric, ranking and cross-tab analysis (analytics v2) ───────────────
+
+export interface NumericSummary {
+  column: string; n: number; mean: number; median: number; min: number; max: number; stddev: number;
+}
+
+export async function fetchNumericSummary(slug: string, columns: string[], version?: number): Promise<NumericSummary[]> {
+  if (columns.length === 0) return [];
+  const { data, error } = await supabase.rpc('survey_numeric_summary', { p_slug: slug, p_columns: columns, p_version: version ?? null });
+  if (error) throw translate(error, 'view question analysis');
+  return ((data ?? []) as { column_name: string; n: number; mean: number; median: number; min_value: number; max_value: number; stddev: number }[])
+    .map(r => ({
+      column: r.column_name, n: Number(r.n), mean: Number(r.mean), median: Number(r.median),
+      min: Number(r.min_value), max: Number(r.max_value), stddev: Number(r.stddev),
+    }));
+}
+
+export interface RankingSummaryRow { value: string; respondents: number; avgPosition: number; firstChoice: number }
+
+export async function fetchRankingSummary(slug: string, column: string, version?: number): Promise<RankingSummaryRow[]> {
+  const { data, error } = await supabase.rpc('survey_ranking_summary', { p_slug: slug, p_column: column, p_version: version ?? null });
+  if (error) throw translate(error, 'view question analysis');
+  return ((data ?? []) as { value: string; respondents: number; avg_position: number; first_choice: number }[])
+    .map(r => ({ value: r.value, respondents: Number(r.respondents), avgPosition: Number(r.avg_position), firstChoice: Number(r.first_choice) }));
+}
+
+export interface CrosstabCell { row: string; col: string; n: number }
+export interface Crosstab {
+  threshold: number;
+  cells: CrosstabCell[];
+  suppressedCells: number;
+  suppressedResponses: number | null;
+  total: number | null;
+}
+
+export async function fetchCrosstab(slug: string, rowColumn: string, colColumn: string, version?: number): Promise<Crosstab> {
+  const { data, error } = await supabase.rpc('survey_crosstab', {
+    p_slug: slug, p_row: rowColumn, p_col: colColumn, p_version: version ?? null, p_threshold: 5,
+  });
+  if (error) throw translate(error, 'view the cross-tab');
+  const d = data as { error?: string; threshold: number; cells: CrosstabCell[]; suppressed_cells: number; suppressed_responses: number | null; total: number | null };
+  if (d?.error === 'invalid_column') throw new Error('Those two questions cannot be compared. Choose two single-answer questions.');
+  raiseIfError(d, 'view the cross-tab');
+  return {
+    threshold: d.threshold, cells: d.cells ?? [], suppressedCells: d.suppressed_cells,
+    suppressedResponses: d.suppressed_responses, total: d.total,
+  };
+}

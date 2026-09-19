@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '../../components/ui/button';
-import { fetchAuditPage, type AuditEntry } from '../reportStore';
+import { fetchAuditActionTypes, fetchAuditPage, type AuditEntry } from '../reportStore';
 import { listOrganizations, type Organization } from '../adminStore';
 import { totalPages, hasNextPage, hasPreviousPage } from '../pagination';
 import { AccessDenied, DataTable, EmptyState, ErrorNote, PageHeader, SkeletonRows, Td, relativeTime } from '../ui';
@@ -8,17 +8,26 @@ import { AccessDenied, DataTable, EmptyState, ErrorNote, PageHeader, SkeletonRow
 const PAGE_SIZE = 25;
 
 const ACTION_LABELS: Record<string, string> = {
-  SURVEY_CLOSED: 'Survey closed', SURVEY_REOPENED: 'Survey reopened', DATA_EXPORTED: 'Data exported',
+  SURVEY_CLOSED: 'Survey closed', SURVEY_REOPENED: 'Survey reopened', SURVEY_TABLE_PROVISIONED: 'Response table set up',
+  DATA_EXPORTED: 'Data exported',
   MEMBER_ADDED: 'Member added', ROLE_CHANGED: 'Role changed', IDENTITY_PERMISSION_CHANGED: 'Identity permission changed',
   MEMBER_DEACTIVATED: 'Member deactivated', MEMBER_REACTIVATED: 'Member reactivated',
   LIBRARY_QUESTION_CREATED: 'Library question created', LIBRARY_QUESTION_EDITED: 'Library question edited',
   LIBRARY_QUESTION_DEACTIVATED: 'Library question status changed', LIBRARY_QUESTION_ADDED_TO_SURVEY: 'Library question added to survey',
   TEMPLATE_CREATED: 'Template created', TEMPLATE_EDITED: 'Template edited', TEMPLATE_DEACTIVATED: 'Template status changed',
   SETTINGS_CHANGED: 'Settings changed', CUSTOMER_BRANDING_CHANGED: 'Customer branding changed',
+  EMPLOYEE_CREATED: 'Employee added', EMPLOYEE_UPDATED: 'Employee updated', EMPLOYEES_IMPORTED: 'Employees imported',
+  CAMPAIGN_CREATED: 'Campaign created', CAMPAIGN_EDITED: 'Campaign edited', CAMPAIGN_RECIPIENTS_BUILT: 'Campaign recipients built',
+  CAMPAIGN_SCHEDULED: 'Campaign scheduled', CAMPAIGN_COMPLETED: 'Campaign completed', CAMPAIGN_CANCELLED: 'Campaign cancelled',
+  CAMPAIGN_TEST_EMAIL_REQUESTED: 'Campaign test email requested',
+  PLATFORM_RESET: 'Platform data reset', TEST_DATA_SEEDED: 'Test data added', TEST_DATA_REMOVED: 'Test data removed',
 };
 
 function actionLabel(type: string): string {
-  return ACTION_LABELS[type] ?? type.toLowerCase().replace(/_/g, ' ');
+  const known = ACTION_LABELS[type];
+  if (known) return known;
+  const words = type.toLowerCase().replace(/_/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 /**
@@ -43,7 +52,10 @@ export default function Activity() {
   const [error, setError] = useState<string | null>(null);
   const [denied, setDenied] = useState(false);
 
+  const [seenActions, setSeenActions] = useState<string[]>([]);
+
   useEffect(() => { void listOrganizations().then(setOrgs).catch(() => {}); }, []);
+  useEffect(() => { void fetchAuditActionTypes().then(setSeenActions).catch(() => {}); }, []);
 
   const filters = useMemo(() => ({
     organizationId: org || undefined,
@@ -68,7 +80,11 @@ export default function Activity() {
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { setPage(0); }, [org, user, action, dateFrom, dateTo]);
 
-  const knownActions = Object.keys(ACTION_LABELS);
+  // What has really happened, plus the well-known types, in one alphabetical list by label.
+  const knownActions = useMemo(
+    () => [...new Set([...seenActions, ...Object.keys(ACTION_LABELS)])].sort((a, b) => actionLabel(a).localeCompare(actionLabel(b))),
+    [seenActions],
+  );
 
   if (denied) {
     return (
@@ -132,7 +148,13 @@ export default function Activity() {
   );
 }
 
+/** "table_name: survey_x" style, with keys read as words and long lists shortened. */
 function summarizeDetail(details: Record<string, unknown>): string {
   const entries = Object.entries(details ?? {}).filter(([k]) => k !== 'token' && k !== 'token_hash');
-  return entries.map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(',') : String(v)}`).join(' · ') || '—';
+  const show = (v: unknown): string => {
+    if (Array.isArray(v)) return v.length > 4 ? `${v.slice(0, 4).join(', ')} +${v.length - 4} more` : v.join(', ');
+    if (v !== null && typeof v === 'object') return JSON.stringify(v);
+    return String(v);
+  };
+  return entries.map(([k, v]) => `${k.replace(/_/g, ' ')}: ${show(v)}`).join(' · ') || '—';
 }

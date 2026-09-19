@@ -125,6 +125,23 @@ export async function fetchAuditPage(
   return { rows: (data ?? []) as AuditEntry[], total: count ?? 0 };
 }
 
+/**
+ * Every distinct action type present in the audit log, most recent first, so the
+ * Activity filter offers exactly what has really happened - including events
+ * (table provisioning, platform resets, campaign steps) that no hard-coded list
+ * would ever keep up with. Reads the latest 2000 events, which is ample to
+ * cover every type in use.
+ */
+export async function fetchAuditActionTypes(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('audit_logs')
+    .select('action_type')
+    .order('created_at', { ascending: false })
+    .limit(2000);
+  if (error) throw toDomainError(error, 'read the audit log', { '42501': 'Only an owner can read the audit log.' });
+  return [...new Set((data ?? []).map(r => (r as { action_type: string }).action_type))];
+}
+
 /** Matches this table's declared column grants: authenticated can never select these, so they'd never appear in `data` below - listed only so coarsening/redaction code has one place to point at. */
 const IDENTITY_COLUMNS = ['employee_id', 'resp_department', 'resp_location', 'resp_designation'];
 

@@ -36,6 +36,14 @@ Totals: 8 customers, 12 surveys, 11 survey versions, 472 employees, 472 invitati
 
 **Open decision:** the legacy `public.survey_responses` table still holds 2 S2M respondent rows. The founder said "all are only for testing" but that table was deliberately not included in the reset; delete it only on an explicit ask.
 
+## Test data (added 2026-09-19, after the reset)
+
+So every admin section has something to show, [`apps/supabase/ops/seed_test_data.sql`](../apps/supabase/ops/seed_test_data.sql) added clearly-labelled fictional data: two customers ("Northwind Demo Co (TEST)", "Globex Demo Ltd (TEST)"), 50 synthetic employees (`@example.com`), four surveys (three live with ~100 responses, one draft) covering every new question type, plus their invitations. It ran as a temporary team member `seed-bot@example.test` (removed at the end of the same transaction) so the real `ensure_survey_response_table()` created the response tables. The audit log records it as `TEST_DATA_SEEDED`.
+
+**Remove it before real customers go in:** run [`apps/supabase/ops/remove_test_data.sql`](../apps/supabase/ops/remove_test_data.sql). It touches only rows tied to the two `-demo-test` customers. The 28-question starter library is real content and is not removed.
+
+The open-link test survey (`/s/test-customer-satisfaction`) is public; its one extra response (65 rather than 64) came from an end-to-end check of the respondent flow.
+
 ## Founder actions (not possible from the tooling used to build this)
 
 1. **Domain / Vercel project.** `aspiresurveys.vercel.app` is a production domain of the existing Vercel project `s2m-aspire-survey` (verified: the production deployment of `main` carries it as an alias, and it is publicly reachable). The old `s2m-aspire-survey.vercel.app` address was removed and now returns `DEPLOYMENT_NOT_FOUND`. The project is still *named* `s2m-aspire-survey`; renaming it in Vercel is cosmetic. Old deployment snapshots (including the S2M survey) are SSO-protected, not public, but can be deleted in the Vercel dashboard if you want them gone entirely.

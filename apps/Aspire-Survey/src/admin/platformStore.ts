@@ -143,3 +143,36 @@ export async function updateCustomer(id: string, patch: Partial<{
 export async function setCustomerActive(id: string, active: boolean): Promise<void> {
   return updateCustomer(id, { is_active: active });
 }
+
+// ── Org-wide responses and analytics ───────────────────────────────────────
+
+export interface ResponseOverviewRow {
+  slug: string; title: string; organization_id: string | null; organization_name: string | null;
+  status: SurveyStatus; privacy_mode: 'ANONYMOUS' | 'ANONYMOUS_TRACKED' | 'CONFIDENTIAL';
+  responses: number; responses_7d: number; responses_30d: number;
+  first_response_at: string | null; last_response_at: string | null;
+}
+
+/** Per-survey response counts and recency, counted in the database: no response row is downloaded. */
+export async function fetchResponseOverview(): Promise<ResponseOverviewRow[]> {
+  const { data, error } = await supabase.rpc('admin_response_overview');
+  if (error) throw translate(error, 'view responses');
+  return ((data ?? []) as ResponseOverviewRow[]).map(r => ({
+    ...r, responses: Number(r.responses), responses_7d: Number(r.responses_7d), responses_30d: Number(r.responses_30d),
+  }));
+}
+
+export interface NpsOverviewRow {
+  slug: string; title: string; organization_name: string | null; question_label: string;
+  answers: number; promoters: number; passives: number; detractors: number; nps: number;
+}
+
+/** NPS per survey question, only where at least 5 people answered. */
+export async function fetchNpsOverview(): Promise<NpsOverviewRow[]> {
+  const { data, error } = await supabase.rpc('admin_nps_overview');
+  if (error) throw translate(error, 'view analytics');
+  return ((data ?? []) as NpsOverviewRow[]).map(r => ({
+    ...r, answers: Number(r.answers), promoters: Number(r.promoters), passives: Number(r.passives),
+    detractors: Number(r.detractors), nps: Number(r.nps),
+  }));
+}

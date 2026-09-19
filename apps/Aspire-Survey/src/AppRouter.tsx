@@ -6,7 +6,8 @@ import AdminGate from './admin/AdminGate';
 import AdminShell from './admin/AdminShell';
 import Overview from './admin/pages/Overview';
 import Customers from './admin/pages/Customers';
-import ComingSoon from './admin/pages/ComingSoon';
+import Responses from './admin/pages/Responses';
+import Analytics from './admin/pages/Analytics';
 import SurveyManagement from './admin/pages/SurveyManagement';
 import SurveyDetail from './admin/pages/SurveyDetail';
 import SurveyBuilder from './admin/pages/SurveyBuilder';
@@ -66,20 +67,8 @@ export default function AppRouter() {
           <Route path="surveys/:slug/campaign" element={<SurveyCampaign />} />
           <Route path="surveys/:slug/responses" element={<ResponseCentre />} />
           <Route path="surveys/:slug/analytics" element={<SurveyAnalytics />} />
-          <Route path="responses" element={
-            <ComingSoon
-              title="Responses"
-              summary="Browse, filter and export responses across surveys."
-              whereForNow="Per-survey responses and CSV export are available today from a survey's Results screen."
-              to="/admin/surveys"
-            />} />
-          <Route path="analytics" element={
-            <ComingSoon
-              title="Analytics"
-              summary="Cross-survey analysis and question-level breakdowns."
-              whereForNow="Per-survey analytics are available today from a survey's Results screen."
-              to="/admin/surveys"
-            />} />
+          <Route path="responses" element={<Responses />} />
+          <Route path="analytics" element={<Analytics />} />
           <Route path="question-library" element={<QuestionLibrary />} />
           <Route path="templates" element={<Templates />} />
           <Route path="team" element={<Team />} />

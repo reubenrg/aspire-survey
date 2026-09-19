@@ -39,6 +39,20 @@ The Builder is a section-and-question canvas. Add sections, add questions (text,
 
 You can also **save a question to the Question Library** or **save the whole survey as a template** from inside the Builder, to reuse it later — this makes a one-time copy; editing the library/template afterward never changes surveys that already used it.
 
+## Question types and logic
+
+**Types:** short text (with length and format limits), long text, email, number (min / max / whole numbers / unit), date, dropdown, single choice, multiple choice (min / max selections), yes/no, star or numbered rating (3-10), Net Promoter Score (0-10), slider, ranking, and matrix (a rating grid). Choice and ranking questions can show their options in a random order per respondent; "Other" and "None of the above" always stay last.
+
+**Logic** works at three levels, all edited in the Builder:
+
+- *A question's display rule* ("Show this question when...") - one or more rules combined with **all** or **any**. Operators depend on the source question: is / is not, contains / does not contain, greater than / at least / less than / at most (numbers, ratings, scores, dates), is answered / is not answered.
+- *A page's display rule* - select the page in the left panel to hide the whole page unless a rule holds.
+- *Skip rules* - on a page, "if ... go to page X" or "end the survey". They are checked in order once the page is answered; the first match wins, and they can only jump forward.
+
+Anything a respondent skipped is stored as empty, so a stale answer from a branch they left never reaches your data. **Piping:** put `{{answer:question_id}}` (or `{{answer:question_id|fallback}}`) in a later question, or the thank-you message, to repeat an earlier answer.
+
+Publishing is blocked while a rule points at a question that is missing, later in the survey, or a matrix; a limit is nonsensical (minimum above maximum); or a skip rule goes backwards.
+
 ## Publish
 
 Once you're happy with the draft, **Publish**. This locks in the live version respondents will see. You can still make additive changes later (add a question, add a matrix row) without breaking existing responses; changes that would reinterpret already-collected data (renaming a question, changing its type) are blocked with a clear explanation of why.

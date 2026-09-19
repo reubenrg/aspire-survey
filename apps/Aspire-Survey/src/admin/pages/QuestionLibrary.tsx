@@ -1,3 +1,4 @@
+import TypeSettings from '../builder/TypeSettings';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '../../components/ui/button';
 import { useAdminSession } from '../AdminGate';
@@ -196,11 +197,7 @@ function LibraryQuestionDialog({
           <Field label="Help text (optional)">
             <input value={helpText} onChange={e => setHelpText(e.target.value)} className={inputCls} />
           </Field>
-          {(question.type === 'radio' || question.type === 'select' || question.type === 'checkbox') && (
-            <Field label="Options, one per line">
-              <textarea rows={4} value={question.options.join('\n')} onChange={e => setQuestion({ ...question, options: e.target.value.split('\n') } as Question)} className={inputCls + ' font-mono text-xs'} />
-            </Field>
-          )}
+          <TypeSettings question={question} readOnly={false} onChange={setQuestion} />
           <div className="grid grid-cols-2 gap-3">
             <Field label="Category">
               <select value={category} onChange={e => setCategory(e.target.value)} className={inputCls}>

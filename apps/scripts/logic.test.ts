@@ -415,3 +415,27 @@ test('every respondent-facing string of the new types is offered for translation
     assert.ok(strings.includes(expected), expected);
   }
 });
+
+// ── NPS / rating arithmetic ─────────────────────────────────────────────
+
+import { fillScale, meanFromDistribution, npsFromDistribution } from '../Aspire-Survey/src/admin/npsMath.ts';
+
+test('NPS is promoters minus detractors as a share of all answers; passives only dilute', () => {
+  const r = npsFromDistribution([
+    { value: '10', n: 4 }, { value: '9', n: 2 }, { value: '8', n: 3 }, { value: '7', n: 1 },
+    { value: '6', n: 2 }, { value: '0', n: 1 },
+  ]);
+  assert.deepEqual([r.promoters, r.passives, r.detractors, r.total], [6, 4, 3, 13]);
+  assert.equal(r.score, 23.1); // (6-3)/13
+  assert.equal(npsFromDistribution([]).score, null);
+  // values outside 0-10 or non-integers are not scores
+  assert.equal(npsFromDistribution([{ value: '11', n: 5 }, { value: 'x', n: 5 }, { value: '5.5', n: 5 }]).total, 0);
+});
+
+test('mean and scale filling ignore junk and keep zero-count steps in order', () => {
+  assert.equal(meanFromDistribution([{ value: '1', n: 1 }, { value: '5', n: 3 }, { value: 'n/a', n: 9 }]), 4);
+  assert.equal(meanFromDistribution([]), null);
+  assert.deepEqual(fillScale([{ value: '2', n: 3 }], 1, 3), [
+    { value: '1', n: 0 }, { value: '2', n: 3 }, { value: '3', n: 0 },
+  ]);
+});
