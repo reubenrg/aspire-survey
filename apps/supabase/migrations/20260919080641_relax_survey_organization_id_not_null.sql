@@ -1,0 +1,12 @@
+-- Reverts require_survey_organization_id (2026-09-18). That migration's comment
+-- claimed "every write path always supplies organization_id" - true for the
+-- TypeScript client, but generateUpsertSql() (the SQL the legacy editor's SQL
+-- tab hands an admin to paste into the Supabase SQL editor) is also a write
+-- path, and it emits `insert into public.surveys (slug, title, definition,
+-- table_name, published)` with no organization_id. Postgres checks NOT NULL on
+-- the proposed row before ON CONFLICT is resolved, so that statement began
+-- failing even for an existing slug it would only have updated. Found during
+-- production pre-flight. The tightening was a low-value schema nicety, not a
+-- security fix, so the correct response is to restore the previous behaviour
+-- rather than change a documented workflow.
+alter table public.surveys alter column organization_id drop not null;

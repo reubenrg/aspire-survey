@@ -9,7 +9,7 @@
 
 | Capability | Status | Basis |
 |---|---|---|
-| Migrations are version-controlled and replayable | **VERIFIED** | `apps/supabase/migrations/` (31 files, 2026-09-17 onward) applied in order against the schema state in `apps/supabase/schema_snapshot.sql` reproduces current schema; every file's SQL was pulled byte-exact from Supabase's own `supabase_migrations.schema_migrations` table |
+| Migrations are version-controlled and replayable | **VERIFIED** | `apps/supabase/migrations/` (33 files, 2026-09-17 onward) applied in order against the schema state in `apps/supabase/schema_snapshot.sql` reproduces current schema; every file's SQL was pulled byte-exact from Supabase's own `supabase_migrations.schema_migrations` table |
 | Legacy S2M data (`public.survey_responses`) has stayed intact throughout this project's work | **VERIFIED** | Row count reconfirmed at exactly 2 after every hardening increment this phase, by direct query, most recently at the end of this round |
 | Supabase automated backups are enabled for this project | **UNVERIFIED — FOUNDER ACTION REQUIRED** | See [Database backups](#database-backups) below — this project is on Supabase's **free** plan, and no tool available in this session can confirm what backup policy is actually active |
 | A database restore has ever been performed or tested | **UNVERIFIED — FOUNDER ACTION REQUIRED** | No restore, PITR, or backup-download has been attempted at any point in this project's history |
@@ -44,7 +44,7 @@ Stated plainly rather than optimistically:
 - **Someone accidentally drops a table or bad-updates a lot of rows**: recovery depends entirely on whatever Supabase backup/PITR is actually active (unverified — see above). Without a confirmed, tested backup, there is currently **no verified way to recover lost or corrupted response data**.
 - **The Supabase project itself is lost/deleted/becomes inaccessible**: schema and code are recoverable (see above); response *data* is not, unless a backup exists (unverified).
 - **A bad code deploy ships to Vercel**: redeploying a previous Vercel deployment is the standard mechanism and is assumed to work, but has not been exercised in this project.
-- **A bad migration is applied**: none of the 31 migrations applied this phase included a destructive `DROP`/`TRUNCATE` — all were additive or corrective (confirmed by reading each one). This is a project convention (`apps/supabase/MIGRATIONS.md` states it explicitly), not a technical safeguard — a future migration that violates it would not be automatically blocked.
+- **A bad migration is applied**: none of the 33 migrations applied this phase included a destructive `DROP`/`TRUNCATE` — all were additive or corrective (confirmed by reading each one). This is a project convention (`apps/supabase/MIGRATIONS.md` states it explicitly), not a technical safeguard — a future migration that violates it would not be automatically blocked.
 
 ## Recommendation
 
